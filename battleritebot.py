@@ -4,7 +4,7 @@ import discord
 import operator
 import trueskill
 import random
-import pickle
+import dill as pickle
 import discord.member
 
 client = commands.Bot(command_prefix = '!')
@@ -248,24 +248,6 @@ def closeMatch(id, result):
             user_dictionary[player].wins += 1
         for player in match_dictionary[id].team2:
             user_dictionary[player].losses += 1
-        new_rating = trueskill.rate([(user_dictionary[match_dictionary[id].team2[0]].points,
-                                      user_dictionary[match_dictionary[id].team2[1]].points,
-                                      user_dictionary[match_dictionary[id].team2[2]].points),
-                                     (user_dictionary[match_dictionary[id].team1[0]].points,
-                                      user_dictionary[match_dictionary[id].team1[1]].points,
-                                      user_dictionary[match_dictionary[id].team1[2]].points)])
-        user_dictionary[match_dictionary[id].team1[0]].points = new_rating[0][0]
-        user_dictionary[match_dictionary[id].team1[1]].points = new_rating[0][1]
-        user_dictionary[match_dictionary[id].team1[2]].points = new_rating[0][2]
-        user_dictionary[match_dictionary[id].team2[0]].points = new_rating[1][0]
-        user_dictionary[match_dictionary[id].team2[1]].points = new_rating[1][1]
-        user_dictionary[match_dictionary[id].team2[2]].points = new_rating[1][2]
-
-    elif result == 2:   #team 2 wins
-        for player in match_dictionary[id].team2:
-            user_dictionary[player].wins += 1
-        for player in match_dictionary[id].team1:
-            user_dictionary[player].losses += 1
         new_rating = trueskill.rate([(user_dictionary[match_dictionary[id].team1[0]].points,
                                       user_dictionary[match_dictionary[id].team1[1]].points,
                                       user_dictionary[match_dictionary[id].team1[2]].points),
@@ -278,6 +260,25 @@ def closeMatch(id, result):
         user_dictionary[match_dictionary[id].team2[0]].points = new_rating[1][0]
         user_dictionary[match_dictionary[id].team2[1]].points = new_rating[1][1]
         user_dictionary[match_dictionary[id].team2[2]].points = new_rating[1][2]
+
+    elif result == 2:   #team 2 wins
+        for player in match_dictionary[id].team2:
+            user_dictionary[player].wins += 1
+        for player in match_dictionary[id].team1:
+            user_dictionary[player].losses += 1
+
+        new_rating = trueskill.rate([(user_dictionary[match_dictionary[id].team2[0]].points,
+                                      user_dictionary[match_dictionary[id].team2[1]].points,
+                                      user_dictionary[match_dictionary[id].team2[2]].points),
+                                     (user_dictionary[match_dictionary[id].team1[0]].points,
+                                      user_dictionary[match_dictionary[id].team1[1]].points,
+                                      user_dictionary[match_dictionary[id].team1[2]].points)])
+        user_dictionary[match_dictionary[id].team2[0]].points = new_rating[0][0]
+        user_dictionary[match_dictionary[id].team2[1]].points = new_rating[0][1]
+        user_dictionary[match_dictionary[id].team2[2]].points = new_rating[0][2]
+        user_dictionary[match_dictionary[id].team1[0]].points = new_rating[1][0]
+        user_dictionary[match_dictionary[id].team1[1]].points = new_rating[1][1]
+        user_dictionary[match_dictionary[id].team1[2]].points = new_rating[1][2]
 
     for player in match_dictionary[id].players.keys():
         user_dictionary[player].in_match = False
@@ -309,22 +310,35 @@ async def on_ready():
     global user_dictionary
     global match_dictionary
     global user_pickle_in
+    global match_pickle_in
+    global match_counter
     updateQueueEmbed()
     channel = client.get_channel(QUEUE_CHANNEL_ID)
     await channel.purge()
     queue_table_message = await channel.send(embed=queue_embed)
+    await channel.send("\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n")
+    user_pickle_information = []
 
     user_pickle_in = open("user.pickle", "rb")
     user_pickle_information = pickle.load(user_pickle_in)
     user_pickle_in.close()
-    i=0
-    while i < len(user_pickle_information):
 
-        name = user_pickle_information[i][0]
+
+    guild = client.get_guild(SERVER_ID)
+
+    i = 0
+    while i < len(user_pickle_information):
+        name = guild.get_member_named(user_pickle_information[i][0])
         createUser(name)
         user_dictionary[name].points = trueskill.Rating(mu=user_pickle_information[i][1], sigma=user_pickle_information[i][2])
         user_dictionary[name].wins = user_pickle_information[i][3]
         user_dictionary[name].losses = user_pickle_information[i][4]
+        user_dictionary[name].display_rating = round(user_dictionary[name].points.mu * 40)
+        i += 1
+
+    match_pickle_in = open("match.pickle", "rb")
+    match_counter = pickle.load(match_pickle_in)
+    match_pickle_in.close()
 
     print('Battlerite Bot is online.')
 
@@ -352,7 +366,7 @@ async def register(ctx):
         createUser(ctx.author)
         user_pickle_information = []
         for user in user_dictionary.keys():
-            user_pickle_information.append([str(user_dictionary[user].name), user_dictionary[user].points.mu, user_dictionary[user].points.sigma,user_dictionary[user].wins, user_dictionary[user].losses])
+            user_pickle_information.append([str(user), user_dictionary[user].points.mu, user_dictionary[user].points.sigma, user_dictionary[user].wins, user_dictionary[user].losses])
         user_pickle_out = open("user.pickle", "wb")
         pickle.dump(user_pickle_information, user_pickle_out)
         user_pickle_out.close()
@@ -574,6 +588,12 @@ async def mr(ctx, arg):
             closeMatch(user_dictionary[ctx.author].last_match_id, 2)
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has ended. Team 2 has won.")
+            for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team2:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a win. Your new rating is: `{user_dictionary[player].display_rating}`")
+            for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team1:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player].display_rating}`")
         elif match_dictionary[user_dictionary[ctx.author].last_match_id].drop_votes == REQUIRED_VOTERS:
             closeMatch(user_dictionary[ctx.author].last_match_id, 3)
             channel = client.get_channel(MATCH_CHANNEL_ID)
