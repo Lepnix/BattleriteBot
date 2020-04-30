@@ -9,7 +9,7 @@ import discord.member
 
 client = commands.Bot(command_prefix = '!')
 client.remove_command('help')
-TOKEN = ''
+TOKEN = 'NzA0NjYzMDQwNjgyODg1MTM0.XqgasA.IkvPir7CKKm_BMoPrfl1LfjHjf8'
 
 BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE'}
 queue_channel = {}
@@ -287,13 +287,13 @@ def closeMatch(id, result):
         user_dictionary[player].dropped = False
         user_dictionary[player].display_rating = round(user_dictionary[player].points.mu * 40)
 
-    #user_pickle_information = []
+    user_pickle_information = []
 
-    #for user in user_dictionary.keys():
-     #   user_pickle_information.append([str(user_dictionary[user].name), user_dictionary[user].points.mu, user_dictionary[user].points.sigma, user_dictionary[user].wins, user_dictionary[user].losses])
+    for user in user_dictionary.keys():
+        user_pickle_information.append([str(user_dictionary[user].name), user_dictionary[user].points.mu, user_dictionary[user].points.sigma, user_dictionary[user].wins, user_dictionary[user].losses])
 
     user_pickle_out = open("user.pickle", "wb")
-    pickle.dump(user_dictionary, user_pickle_out)
+    pickle.dump(user_pickle_information, user_pickle_out)
     user_pickle_out.close()
 
     match_pickle_out = open("match.pickle", "wb")
@@ -315,9 +315,17 @@ async def on_ready():
     queue_table_message = await channel.send(embed=queue_embed)
 
     user_pickle_in = open("user.pickle", "rb")
-    user_dictionary = pickle.load(user_pickle_in)
+    user_pickle_information = pickle.load(user_pickle_in)
     user_pickle_in.close()
-    
+    i=0
+    while i < len(user_pickle_information):
+
+        name = user_pickle_information[i][0]
+        createUser(name)
+        user_dictionary[name].points = trueskill.Rating(mu=user_pickle_information[i][1], sigma=user_pickle_information[i][2])
+        user_dictionary[name].wins = user_pickle_information[i][3]
+        user_dictionary[name].losses = user_pickle_information[i][4]
+
     print('Battlerite Bot is online.')
 
 
@@ -342,9 +350,11 @@ async def register(ctx):
         await channel.send('You are already registered.')
     else:
         createUser(ctx.author)
-
+        user_pickle_information = []
+        for user in user_dictionary.keys():
+            user_pickle_information.append([str(user_dictionary[user].name), user_dictionary[user].points.mu, user_dictionary[user].points.sigma,user_dictionary[user].wins, user_dictionary[user].losses])
         user_pickle_out = open("user.pickle", "wb")
-        pickle.dump(user_dictionary, user_pickle_out)
+        pickle.dump(user_pickle_information, user_pickle_out)
         user_pickle_out.close()
         await channel.send('You have been successfully registered.')
 
