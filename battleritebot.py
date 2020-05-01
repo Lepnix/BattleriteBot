@@ -7,9 +7,9 @@ import random
 import dill as pickle
 import discord.member
 
-client = commands.Bot(command_prefix = '!')
+client = commands.Bot(command_prefix='!')
 client.remove_command('help')
-TOKEN = 'NzA0NjYzMDQwNjgyODg1MTM0.Xqs7wA.fP7lALSosqM8e3mZ6bkF_1YhQXw'
+TOKEN = ''
 
 BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE',
           'bakko': 'p2, yQ, tS, rE, yE', 'jamila': 'p2, rS, yE, pE, pR', 'raigon': 'tS, gS, tQ, rQ, bR',
@@ -27,11 +27,11 @@ user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
 MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', 'Great Market Night', 'Meriko Summit Night', 'Mount Araz Day', 'Sky Ring Night']
-QUEUE_CHANNEL_ID = 704660113897685022
-MATCH_CHANNEL_ID = 704660569319538829
-MISC_COMMANDS_ID = 704660610595553350
-SERVER_ID = 704657422857273472
-BANNED_ROLE_ID = 705859689547694120
+QUEUE_CHANNEL_ID = 705836610410774528
+MATCH_CHANNEL_ID = 705836635241185354
+MISC_COMMANDS_ID = 705836678891307089
+SERVER_ID = 599028066991341578
+BANNED_ROLE_ID = 705858676648443934
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
 REQUIRED_VOTERS = 4
@@ -207,8 +207,6 @@ def createMatchEmbed(id):
     color=discord.Color.magenta()
     )
 
-    color = random.randint(0, 6)
-
     team1 = f"{match_dictionary[id].team1[0].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[0]]}" \
         f"\n{match_dictionary[id].team1[1].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[1]]}" \
         f"\n{match_dictionary[id].team1[2].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[2]]}"
@@ -220,21 +218,6 @@ def createMatchEmbed(id):
     updated_match_embed.add_field(name='Team 2', value=team2, inline=True)
     updated_match_embed.add_field(name='Map', value=match_dictionary[id].map, inline=False)
     updated_match_embed.set_author(name=f'Match #{id}')
-
-    if color == 0:
-        updated_match_embed.color = discord.Color.magenta()
-    if color == 1:
-        updated_match_embed.color = discord.Color.gold()
-    if color == 2:
-        updated_match_embed.color = discord.Color.teal()
-    if color == 3:
-        updated_match_embed.color = discord.Color.red()
-    if color == 4:
-        updated_match_embed.color = discord.Color.blue()
-    if color == 5:
-        updated_match_embed.color = discord.Color.purple()
-    if color == 6:
-        updated_match_embed.color = discord.Color.green()
 
     match_embed = updated_match_embed
 
