@@ -87,12 +87,20 @@ class Match:
         global purge_voters
         global match_counter
         global user_dictionary
-        i = 0
         self.players = {}
-        while i < 6:
-            self.players[queue_channel[i][0]] = queue_channel[i][1]
-            i += 1
         self.support_counter = 0
+        for player in queue_channel:
+            if len(self.players) < 6:
+                if player[1] == 'Fill' or player[1] == 'DPS':
+                    self.players[player[0]] = player[1]
+                elif self.support_counter < 2:
+                    self.players[player[0]] = player[1]
+                    self.support_counter += 1
+        for player in self.players:
+            if player in [item[0] for item in queue_channel]:
+                del queue_channel[[item[0] for item in queue_channel].index(player)]
+        for player in queue_channel:
+            print(player[0])
         self.draft_pool = list(self.players.keys())
         self.team1 = []
         self.team2 = []
@@ -101,7 +109,6 @@ class Match:
         self.team2_win_votes = 0
         self.drop_votes = 0
         self.map = MAP_POOL[random.randint(0, 6)]
-        del queue_channel[0:6]
         purge_voters = []
         max = user_dictionary[self.draft_pool[0]].display_rating
         self.captain1 = self.draft_pool[0]
@@ -445,7 +452,8 @@ async def queue(ctx, action, role=None):
                         updateQueueTableData()
                         updateQueueEmbed()
                         await queue_table_message.edit(embed=queue_embed)
-                        if len(queue_channel) >= 6:
+                        role_list = [item[1] for item in queue_channel]
+                        if (len(queue_channel) >= 6) and ((role_list.count('Fill') + role_list.count('DPS')) > 3):
                             createMatch()
                             updateQueueTableData()
                             updateQueueEmbed()
