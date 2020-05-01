@@ -9,7 +9,7 @@ import discord.member
 
 client = commands.Bot(command_prefix = '!')
 client.remove_command('help')
-TOKEN = ''
+TOKEN = 'NzA0NjYzMDQwNjgyODg1MTM0.Xqs7wA.fP7lALSosqM8e3mZ6bkF_1YhQXw'
 
 BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE',
           'bakko': 'p2, yQ, tS, rE, yE', 'jamila': 'p2, rS, yE, pE, pR', 'raigon': 'tS, gS, tQ, rQ, bR',
@@ -22,7 +22,7 @@ BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak':
           'pearl': 'r1, p1, t2, pQ, tE', 'pestilus': 'tQ, pQ, pE, rE, wR', 'pest': 'tQ, pQ, pE, rE, wR',
           'poloma': 't1, tS, pE, rE, tR', 'sirius': 't1, g2, yS, bE, rR', 'ulric': 'r1, w1, yS, pE, yR',
           'zander': 't1, b2, p2, wS, bS'}
-queue_channel = {}
+queue_channel = []
 user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
@@ -30,9 +30,8 @@ MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', '
 QUEUE_CHANNEL_ID = 704660113897685022
 MATCH_CHANNEL_ID = 704660569319538829
 MISC_COMMANDS_ID = 704660610595553350
-ADMIN_ROLE_ID = 705410054542721094
 SERVER_ID = 704657422857273472
-NAME_OF_ADMIN_ROLE = 'actual admin'
+BANNED_ROLE_ID = 705859689547694120
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
 REQUIRED_VOTERS = 4
@@ -88,7 +87,12 @@ class Match:
         global purge_voters
         global match_counter
         global user_dictionary
-        self.players = queue_channel
+        i = 0
+        self.players = {}
+        while i < 6:
+            self.players[queue_channel[i][0]] = queue_channel[i][1]
+            i += 1
+        self.support_counter = 0
         self.draft_pool = list(self.players.keys())
         self.team1 = []
         self.team2 = []
@@ -97,7 +101,7 @@ class Match:
         self.team2_win_votes = 0
         self.drop_votes = 0
         self.map = MAP_POOL[random.randint(0, 6)]
-        queue_channel = {}
+        del queue_channel[0:6]
         purge_voters = []
         max = user_dictionary[self.draft_pool[0]].display_rating
         self.captain1 = self.draft_pool[0]
@@ -121,25 +125,22 @@ class Match:
         self.draft_pool.remove(self.captain2)
 
 
-def clearQueueTableData():
-    global queue_table_data
-    queue_table_data = [['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', '']]
-
-
 def updateQueueTableData():
     global queue_channel
+    global queue_table_data
     f = 0
     d = 0
     s = 0
-    for name in queue_channel:
-        if queue_channel[name] == 'Fill':
-            queue_table_data[0][f] = name.display_name
+    queue_table_data = [['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', '']]
+    for person in queue_channel:
+        if person[1] == 'Fill':
+            queue_table_data[0][f] = person[0].display_name
             f += 1
-        if queue_channel[name] == 'DPS':
-            queue_table_data[1][d] = name.display_name
+        if person[1] == 'DPS':
+            queue_table_data[1][d] = person[0].display_name
             d += 1
-        if queue_channel[name] == 'Support':
-            queue_table_data[2][s] = name.display_name
+        if person[1] == 'Support':
+            queue_table_data[2][s] = person[0].display_name
             s += 1
 
 
@@ -151,9 +152,9 @@ def updateQueueEmbed():
     global field_value_3
 
     updated_queue_embed = discord.Embed(
-    title = None,
-    description = None,
-    color = discord.Color.purple()
+    title=None,
+    description=None,
+    color=discord.Color.purple()
 )
 
 
@@ -199,6 +200,8 @@ def createMatchEmbed(id):
     color=discord.Color.magenta()
     )
 
+    color = random.randint(0, 6)
+
     team1 = f"{match_dictionary[id].team1[0].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[0]]}" \
         f"\n{match_dictionary[id].team1[1].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[1]]}" \
         f"\n{match_dictionary[id].team1[2].display_name} - {match_dictionary[id].players[match_dictionary[id].team1[2]]}"
@@ -208,8 +211,23 @@ def createMatchEmbed(id):
 
     updated_match_embed.add_field(name='Team 1', value=team1, inline=True)
     updated_match_embed.add_field(name='Team 2', value=team2, inline=True)
-    updated_match_embed.add_field(name ='Map', value=match_dictionary[id].map, inline=False)
+    updated_match_embed.add_field(name='Map', value=match_dictionary[id].map, inline=False)
     updated_match_embed.set_author(name=f'Match #{id}')
+
+    if color == 0:
+        updated_match_embed.color = discord.Color.magenta()
+    if color == 1:
+        updated_match_embed.color = discord.Color.gold()
+    if color == 2:
+        updated_match_embed.color = discord.Color.teal()
+    if color == 3:
+        updated_match_embed.color = discord.Color.red()
+    if color == 4:
+        updated_match_embed.color = discord.Color.blue()
+    if color == 5:
+        updated_match_embed.color = discord.Color.purple()
+    if color == 6:
+        updated_match_embed.color = discord.Color.green()
 
     match_embed = updated_match_embed
 
@@ -399,7 +417,7 @@ async def on_message(ctx):
 
 
 @client.command(aliases=['q'])
-async def queue(ctx, action, role = None):
+async def queue(ctx, action, role=None):
     global queue_embed
     global queue_table_message
     global purge_voters
@@ -410,25 +428,26 @@ async def queue(ctx, action, role = None):
         return
 
     channel = await ctx.author.create_dm()
+    guild = client.get_guild(SERVER_ID)
+    ban_role = guild.get_role(BANNED_ROLE_ID)
 
-    if ctx.author in user_dictionary.keys():
-        if action == 'join':
-            if not ctx.author in queue_channel.keys():
+    if (ctx.author in user_dictionary.keys()) and not (ban_role in ctx.author.roles):
+        if action == 'join' or action == 'j':
+            if not ctx.author in (item[0] for item in queue_channel):   #checks if author is in a list of the first element of queue_channel
                 if not user_dictionary[ctx.author].in_match:
                     if role == 'f' or role == 's' or role == 'd' or role == 'fill' or role == 'dps' or role == 'support':
                         if role == 'f' or role == 'fill':
-                            queue_channel[ctx.author] = 'Fill'
+                            queue_channel.append([ctx.author, 'Fill'])
                         if role == 's' or role == 'support':
-                            queue_channel[ctx.author] = 'Support'
+                            queue_channel.append([ctx.author, 'Support'])
                         if role == 'd' or role == 'dps':
-                            queue_channel[ctx.author] = 'DPS'
-                        clearQueueTableData()
+                            queue_channel.append([ctx.author, 'DPS'])
                         updateQueueTableData()
                         updateQueueEmbed()
                         await queue_table_message.edit(embed=queue_embed)
-                        if len(queue_channel) == 6:
+                        if len(queue_channel) >= 6:
                             createMatch()
-                            clearQueueTableData()
+                            updateQueueTableData()
                             updateQueueEmbed()
                             await queue_table_message.edit(embed=queue_embed)
                             channel = await match_dictionary[match_counter].captain1.create_dm()
@@ -452,27 +471,27 @@ async def queue(ctx, action, role = None):
                     await channel.send("You are still in a match. Report your match in the match channel with `!mr <w/l>`")
             else:
                 await channel.send("You are already in queue.")
-        elif action == 'leave':
-            if ctx.author in queue_channel.keys():
-                del queue_channel[ctx.author]
-                clearQueueTableData()
+        elif action == 'leave' or action == 'l':
+            if ctx.author in (item[0] for item in queue_channel):
+                for player in queue_channel:
+                    if player[0] == ctx.author:
+                        queue_channel.remove(player)
                 updateQueueTableData()
                 updateQueueEmbed()
                 await queue_table_message.edit(embed=queue_embed)
             else:
                 await channel.send("You are not in queue.")
-        elif action == 'purge':
+        elif action == 'purge' or action == 'p':
             if not ctx.author in purge_voters:
                 purge_voters.append(ctx.author)
                 if len(purge_voters) < REQUIRED_VOTERS:
                     await channel.send(f"You have voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
                 else:
                     purge_voters = []
-                    for key in queue_channel:
-                        channel = await key.create_dm()
+                    for player in queue_channel:
+                        channel = await player[0].create_dm()
                         await channel.send("The queue has been purged.")
                     queue_channel = []
-                    clearQueueTableData()
                     updateQueueTableData()
                     updateQueueEmbed()
                     await queue_table_message.edit(embed=queue_embed)
@@ -480,6 +499,9 @@ async def queue(ctx, action, role = None):
                 await channel.send(f"You have already voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
         else:
             await channel.send(f"`{action}` is not a recognized command.")
+
+    elif ban_role in ctx.author.roles:
+        await channel.send("You are currently banned from NAIL.")
 
     else:
         await channel.send("You have not yet registered. Please register using the `!register` command in misc-command channel.")
@@ -517,7 +539,7 @@ async def draft(ctx, arg):
                 f"It is your turn to draft. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
                 f"```1 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0]]}\n"
                 f"2 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1]]}\n"
-                f"3 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[2].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[2]]}```\n\n"
+                f"3 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[2].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[2]]}\n\n"
                 f"Team 1\n"
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team1[0].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team1[0]]}\n"
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team1[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team1[1]]}\n\n"
@@ -530,9 +552,10 @@ async def draft(ctx, arg):
             match_dictionary[user_dictionary[ctx.author].last_match_id].team2.append(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool.pop(int(arg) - 1))   #removes chosen player from draft pool and adds them to team 1
             channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
             await channel.send(
-                f"It is your turn to draft. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                f"You have chosen `{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1].display_name}`."
+                f"It is your turn to draft, again. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
                 f"```1 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0]]}\n"
-                f"2 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1]]}```\n\n"
+                f"2 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1]]}\n\n"
                 f"Team 1\n"
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team1[0].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team1[0]]}\n"
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team1[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team1[1]]}\n\n"
@@ -541,7 +564,6 @@ async def draft(ctx, arg):
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1].display_name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1]]}```\n"
             )
             channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
-            await channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1].display_name}`. Waiting for other captain to draft.")
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 3:
             await ctx.channel.send("It is not your turn to pick.")
         elif user_dictionary[ctx.author].is_captain2 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
@@ -646,14 +668,14 @@ async def help(ctx):
                        f"\n!info - the bot messages you your rating, W/L, and current standing"
                        f"\n!build <character> - displays the most common build for the character *non-bot channel only*"
                        f"\n!draft <#> - used if you are a captain and the bot messages you to draft a player"
-                       f"\n!leaderboard - bot messages you a top 10 leaderboard"
+                       f"\n!leaderboard/!lb - bot messages you a top 10 leaderboard"
                        f"\n\nQueue Channel Commands:"
-                       f"\n!queue join <f/d/s> - joins the queue as the desired role"
-                       f"\n!queue leave - leaves the queue"
-                       f"\n!queue purge - requires four people to empty the queue channel"
+                       f"\n!queue/!q join/j <f/d/s/fill/dps/support> - joins the queue as the desired role"
+                       f"\n!queue/!q leave/l - leaves the queue"
+                       f"\n!queue/!q purge/p - requires four people to empty the queue channel"
                        f"\n\nMatch Channel Commands"
-                       f"\n!mr <w/l> - report your current match as a win or loss"
-                       f"\n!mr d - requires 4 people in your match to drop the match```")
+                       f"\n!mr <w/l/win/loss> - report your current match as a win or loss"
+                       f"\n!mr d/drop - requires 4 people in your match to drop the match```")
 
 @client.command(aliases=['lb'])
 async def leaderboard(ctx):
