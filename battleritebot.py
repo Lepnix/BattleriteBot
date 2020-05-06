@@ -9,7 +9,7 @@ import discord.member
 
 client = commands.Bot(command_prefix='!')
 client.remove_command('help')
-TOKEN = open('Secret.txt', 'r').read()
+TOKEN = open('token.secret', 'r').read()
 
 BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE',
           'bakko': 'p2, yQ, tS, rE, yE', 'jamila': 'p2, rS, yE, pE, pR', 'raigon': 'tS, gS, tQ, rQ, bR',
