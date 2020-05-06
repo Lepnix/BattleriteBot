@@ -9,7 +9,7 @@ import discord.member
 
 client = commands.Bot(command_prefix='!')
 client.remove_command('help')
-TOKEN = ''
+TOKEN = open('Secret.txt', 'r').read()
 
 BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE',
           'bakko': 'p2, yQ, tS, rE, yE', 'jamila': 'p2, rS, yE, pE, pR', 'raigon': 'tS, gS, tQ, rQ, bR',
@@ -24,10 +24,10 @@ BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak':
           'zander': 't1, b2, p2, wS, bS'}
 
 character_stats = {'freya': [0, 0, 0, 0, 0], 'ashka': [0, 0, 0, 0, 0], 'croak': [0, 0, 0, 0, 0], 'bakko': [0, 0, 0, 0, 0],
-                   'jamila': [0, 0, 0, 0, 0], 'raigon': [0, 0, 0, 0, 0],'rook': [0, 0, 0, 0, 0], 'rk': [0, 0, 0, 0, 0],
+                   'jamila': [0, 0, 0, 0, 0], 'raigon': [0, 0, 0, 0, 0],'rook': [0, 0, 0, 0, 0], 'ruh kaan': [0, 0, 0, 0, 0],
                    'shifu': [0, 0, 0, 0, 0], 'thorn': [0, 0, 0, 0, 0], 'alysia': [0, 0, 0, 0, 0], 'destiny': [0, 0, 0, 0, 0],
                    'ezmo': [0, 0, 0, 0, 0], 'iva': [0, 0, 0, 0, 0], 'jade' : [0, 0, 0, 0, 0], 'jumong': [0, 0, 0, 0, 0],
-                   'shen': [0, 0, 0, 0, 0], 'taya': [0, 0, 0, 0, 0], 'varesh': [0, 0, 0, 0, 0], 'blossom': [0, 0, 0, 0, 0],
+                   'shen rao': [0, 0, 0, 0, 0], 'taya': [0, 0, 0, 0, 0], 'varesh': [0, 0, 0, 0, 0], 'blossom': [0, 0, 0, 0, 0],
                    'lucie': [0, 0, 0, 0, 0], 'oldur': [0, 0, 0, 0, 0], 'pearl': [0, 0, 0, 0, 0], 'pestilus': [0, 0, 0, 0, 0],
                    'poloma': [0, 0, 0, 0, 0], 'sirius': [0, 0, 0, 0, 0], 'ulric': [0, 0, 0, 0, 0], 'zander': [0, 0, 0, 0, 0],
                    'stat counter': 0}
@@ -44,6 +44,8 @@ MISC_COMMANDS_ID = 705836678891307089
 DRAFT_CHANNEL_ID = 698678134085779466
 SERVER_ID = 599028066991341578
 BANNED_ROLE_ID = 705858676648443934
+NAIL_MEMBER_ID = 707425411616997489
+NAIL_TRIAL_ID = 707429917586882680
 DRAFT_BOT_ID = 696541378317910096
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
@@ -56,12 +58,10 @@ ranking_scores = []
 user_pickle_information = []
 
 
-
-
 queue_embed = discord.Embed(
     title=None,
     description=None,
-    color=discord.Color.purple()
+    color=discord.Color.magenta()
 )
 
 queue_embed.add_field(name='Fill', value='---', inline=False)
@@ -121,6 +121,7 @@ class Match:
         self.team2_win_votes = 0
         self.drop_votes = 0
         self.map = MAP_POOL[random.randint(0, 6)]
+        self.closed = False
         purge_voters = []
         max = user_dictionary[self.draft_pool[0]].display_rating
         self.captain1 = self.draft_pool[0]
@@ -173,7 +174,7 @@ def updateQueueEmbed():
     updated_queue_embed = discord.Embed(
     title=None,
     description=None,
-    color=discord.Color.purple()
+    color=discord.Color.magenta()
 )
 
 
@@ -318,6 +319,8 @@ def closeMatch(id, result):
         user_dictionary[player].dropped = False
         user_dictionary[player].display_rating = round(user_dictionary[player].points.mu * 40)
 
+    match_dictionary[id].closed = True
+
     user_pickle_information = []
 
     for user in user_dictionary.keys():
@@ -340,33 +343,20 @@ def matchAnalysis(info):
 
     id = int(info[0])
     b1 = info[1]
-    b2 = info[2]
-    b3 = info[3]
+    b2 = info[3]
+    b3 = info[2]
     b4 = info[4]
     p1 = info[5]
-    p2 = info[6]
-    p3 = info[7]
-    p4 = info[8]
-    p5 = info[9]
+    p2 = info[7]
+    p3 = info[9]
+    p4 = info[6]
+    p5 = info[8]
     p6 = info[10]
-
-
-    if b1 == b3 or b1 == b4:
-        character_stats[b1][0] -= 1
-    if b2 == b3 or b2 == b4:
-        character_stats[b2][0] -= 1
 
     character_stats[b1][0] += 1
     character_stats[b2][0] += 1
     character_stats[b3][0] += 1
     character_stats[b4][0] += 1
-
-    if p1 == p4 or p1 == p5 or p1 == p6:
-        character_stats[p1][1] -= 1
-    if p2 == p4 or p2 == p5 or p2 == p6:
-        character_stats[p2][1] -= 1
-    if p3 == p4 or p3 == p5 or p3 == p6:
-        character_stats[p3][1] -= 1
 
     character_stats[p1][1] += 1
     character_stats[p2][1] += 1
@@ -390,12 +380,42 @@ def matchAnalysis(info):
         character_stats[p5][2] += 1
         character_stats[p6][2] += 1
 
-    for champ in character_stats.keys():
-        if champ != 'stat counter':
-            if character_stats[champ][2] + character_stats[champ][3] > 0:
-                character_stats[champ][4] = round(character_stats[champ][2] / (character_stats[champ][2] + character_stats[champ][3]), 1)
+    character_stats['stat counter'] += 2
 
-    character_stats['stat counter'] += 1
+    stats_pickle_out = open("stats.pickle", "wb")
+    pickle.dump(character_stats, stats_pickle_out)
+    stats_pickle_out.close()
+
+
+def matchPickBan(info):
+    global character_stats
+    global stats_pickle_out
+    global match_dictionary
+
+    b1 = info[1]
+    b2 = info[3]
+    b3 = info[2]
+    b4 = info[4]
+    p1 = info[5]
+    p2 = info[7]
+    p3 = info[9]
+    p4 = info[6]
+    p5 = info[8]
+    p6 = info[10]
+
+    character_stats[b1][0] += 1
+    character_stats[b2][0] += 1
+    character_stats[b3][0] += 1
+    character_stats[b4][0] += 1
+
+    character_stats[p1][1] += 1
+    character_stats[p2][1] += 1
+    character_stats[p3][1] += 1
+    character_stats[p4][1] += 1
+    character_stats[p5][1] += 1
+    character_stats[p6][1] += 1
+
+    character_stats['stat counter'] += 2
 
     stats_pickle_out = open("stats.pickle", "wb")
     pickle.dump(character_stats, stats_pickle_out)
@@ -418,13 +438,11 @@ async def on_ready():
     channel = client.get_channel(QUEUE_CHANNEL_ID)
     await channel.purge()
     queue_table_message = await channel.send(embed=queue_embed)
-    await channel.send("\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n\u200b\n")
     user_pickle_information = []
 
     user_pickle_in = open("user.pickle", "rb")
     user_pickle_information = pickle.load(user_pickle_in)
     user_pickle_in.close()
-
 
     guild = client.get_guild(SERVER_ID)
 
@@ -486,15 +504,16 @@ async def on_message(ctx):
     if ctx.author == client.user:
         return
 
-
-    guild = client.get_guild(SERVER_ID)
-    draft_bot = guild.get_member(696541378317910096)
-    if ctx.author == draft_bot and ctx.channel == MISC_COMMANDS_ID:
-        results = str(ctx.message).split()
+    if ctx.author.id == DRAFT_BOT_ID and ctx.channel.id == MISC_COMMANDS_ID:
+        results = ctx.content.split(",")
         match_id = int(results[0])
+        await ctx.delete()
 
         if match_id in match_dictionary.keys():
             stats_cache.append(results)
+        else:
+            matchPickBan(results)
+
 
     def is_not_me(m):
         return m.author != client.user
@@ -519,8 +538,10 @@ async def queue(ctx, action, role=None):
     channel = await ctx.author.create_dm()
     guild = client.get_guild(SERVER_ID)
     ban_role = guild.get_role(BANNED_ROLE_ID)
+    nail_member = guild.get_role(NAIL_MEMBER_ID)
+    nail_trial = guild.get_role(NAIL_TRIAL_ID)
 
-    if (ctx.author in user_dictionary.keys()) and not (ban_role in ctx.author.roles):
+    if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)):
         if action == 'join' or action == 'j':
             if not ctx.author in (item[0] for item in queue_channel):   #checks if author is in a list of the first element of queue_channel
                 if not user_dictionary[ctx.author].in_match:
@@ -590,8 +611,8 @@ async def queue(ctx, action, role=None):
         else:
             await channel.send(f"`{action}` is not a recognized command.")
 
-    elif ban_role in ctx.author.roles:
-        await channel.send("You are currently banned from NAIL.")
+    elif not ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)):
+        await channel.send("You currently do not have a NAIL role. Talk to a moderator to receive the NAIL Trial Member role.")
 
     else:
         await channel.send("You have not yet registered. Please register using the `!register` command in misc-command channel.")
@@ -606,11 +627,25 @@ async def info(ctx):
 
     channel = await ctx.author.create_dm()
 
+    info_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+    )
+
     if ctx.author in user_dictionary:
-        await channel.send(f"```\n{ctx.author.name}"
-                           f"\nRating: {user_dictionary[ctx.author].display_rating}"
-                           f"\nRecord: {user_dictionary[ctx.author].wins}-{user_dictionary[ctx.author].losses}"
-                           f"\nRanking: {ranking_names.index(ctx.author)+1}/{len(ranking_names)}```")
+        info_embed_field_value_1 = f"\nRating:"\
+                                   f"\nRecord:"\
+                                   f"\nRanking:"
+
+        info_embed_field_value_2 = f"{user_dictionary[ctx.author].display_rating}"\
+                                   f"\n{user_dictionary[ctx.author].wins}-{user_dictionary[ctx.author].losses}"\
+                                   f"\n{ranking_names.index(ctx.author)+1}/{len(ranking_names)}"
+
+        info_embed.add_field(name=f"{ctx.author.name}", value=info_embed_field_value_1, inline=True)
+        info_embed.add_field(name="\u200b", value=info_embed_field_value_2, inline=True)
+
+        await channel.send(embed=info_embed)
     else:
         await channel.send("You have not yet registered. Please register using the `!register` command.")
 
@@ -643,7 +678,7 @@ async def draft(ctx, arg):
             channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
             await channel.send(
                 f"You have chosen `{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1].name}`."
-                f"It is your turn to draft, again. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                f" It is your turn to draft, again. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
                 f"```1 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0].name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[0]]}\n"
                 f"2 - {match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool[1]]}\n\n"
                 f"Team 1\n"
@@ -653,7 +688,6 @@ async def draft(ctx, arg):
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team2[0]]}\n"
                 f"{match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1].name} - {match_dictionary[user_dictionary[ctx.author].last_match_id].players[match_dictionary[user_dictionary[ctx.author].last_match_id].team2[1]]}```\n"
             )
-            channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 3:
             await ctx.channel.send("It is not your turn to pick.")
         elif user_dictionary[ctx.author].is_captain2 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
@@ -673,7 +707,7 @@ async def draft(ctx, arg):
             await channel.send(embed=match_embed)
             await channel.send("Please report the match with `!mr <w/l>`")
             channel = client.get_channel(DRAFT_CHANNEL_ID)
-            await channel.send(f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain1} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain2} {user_dictionary[ctx.author].last_match_id}")
+            await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id}")
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
             await ctx.channel.send("It is not your turn to pick.")
         else:
@@ -717,10 +751,14 @@ async def mr(ctx, arg):
         else:
             await channel.send(f"`{arg}` is not recognized as a valid result. Please report the match with `!mr <w/l>`")
 
-        if match_dictionary[user_dictionary[ctx.author].last_match_id].team1_win_votes == REQUIRED_VOTERS:
+        if match_dictionary[user_dictionary[ctx.author].last_match_id].team1_win_votes == REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author].last_match_id].closed:
             closeMatch(user_dictionary[ctx.author].last_match_id, 1)
-            if user_dictionary[ctx.author].last_match_id in [int(item[0]) for item in stats_cache]:
-                matchAnalysis(stats_cache[[int(item[0]) for item in stats_cache].index(user_dictionary[ctx.author].last_match_id)])
+            id_list = []
+            if len(stats_cache) > 0:
+                id_list = [int(item[0]) for item in stats_cache]
+            if user_dictionary[ctx.author].last_match_id in id_list:
+                matchAnalysis(stats_cache[id_list.index(user_dictionary[ctx.author].last_match_id)])
+                del stats_cache[id_list.index(user_dictionary[ctx.author].last_match_id)]
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has ended. Team 1 has won.")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team1:
@@ -731,10 +769,14 @@ async def mr(ctx, arg):
                 user_dictionary[player].in_match = False
                 channel = await player.create_dm()
                 await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player].display_rating}`")
-        elif match_dictionary[user_dictionary[ctx.author].last_match_id].team2_win_votes == REQUIRED_VOTERS:
+        elif match_dictionary[user_dictionary[ctx.author].last_match_id].team2_win_votes == REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author].last_match_id].closed:
             closeMatch(user_dictionary[ctx.author].last_match_id, 2)
-            if user_dictionary[ctx.author].last_match_id in [int(item[0]) for item in stats_cache]:
-                matchAnalysis(stats_cache[[int(item[0]) for item in stats_cache].index(user_dictionary[ctx.author].last_match_id)])
+            id_list = []
+            if len(stats_cache) > 0:
+                id_list = [int(item[0]) for item in stats_cache]
+            if user_dictionary[ctx.author].last_match_id in id_list:
+                matchAnalysis(stats_cache[id_list.index(user_dictionary[ctx.author].last_match_id)])
+                del stats_cache[id_list.index(user_dictionary[ctx.author].last_match_id)]
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has ended. Team 2 has won.")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team2:
@@ -764,14 +806,15 @@ async def help(ctx):
                        f"\n!info - the bot messages you your rating, W/L, and current standing"
                        f"\n!build <character> - displays the most common build for the character *non-bot channel only*"
                        f"\n!draft <#> - used if you are a captain and the bot messages you to draft a player"
-                       f"\n!leaderboard/!lb - bot messages you a top 10 leaderboard"
+                       f"\n!leaderboard(lb) - bot messages you a top 10 leaderboard"
+                       f"\n!stats - bot messages you a list of all the champs and their respective winrates, pickrates, and banrates"
                        f"\n\nQueue Channel Commands:"
-                       f"\n!queue/!q join/j <f/d/s/fill/dps/support> - joins the queue as the desired role"
-                       f"\n!queue/!q leave/l - leaves the queue"
-                       f"\n!queue/!q purge/p - requires four people to empty the queue channel"
+                       f"\n!queue(q) join(j) <fill(f)/dps(d)/support(s)> - joins the queue as the desired role"
+                       f"\n!queue(q) leave(l) - leaves the queue"
+                       f"\n!queue(q) purge(p) - requires four people to empty the queue channel!"
                        f"\n\nMatch Channel Commands"
-                       f"\n!mr <w/l/win/loss> - report your current match as a win or loss"
-                       f"\n!mr d/drop - requires 4 people in your match to drop the match```")
+                       f"\n!mr <win(w)/loss(l)>  - report your current match as a win or loss"
+                       f"\n!mr drop(d) - requires 4 people in your match to drop the match```")
 
 @client.command(aliases=['lb'])
 async def leaderboard(ctx):
@@ -782,22 +825,57 @@ async def leaderboard(ctx):
 
     sortRankings()
     channel = await ctx.author.create_dm()
+
+    lb_embed = discord.Embed(
+        title=None,
+        description=None,
+        color=discord.Color.magenta()
+    )
+
     if len(rankings) > 9:
-        await channel.send(f"```   Leaderboard"
-                           f"\n 1) {ranking_names[0].name} - {ranking_scores[0]}"
-                           f"\n 2) {ranking_names[1].name} - {ranking_scores[1]}"
-                           f"\n 3) {ranking_names[2].name} - {ranking_scores[2]}"
-                           f"\n 4) {ranking_names[3].name} - {ranking_scores[3]}"
-                           f"\n 5) {ranking_names[4].name} - {ranking_scores[4]}"
-                           f"\n 6) {ranking_names[5].name} - {ranking_scores[5]}"
-                           f"\n 7) {ranking_names[6].name} - {ranking_scores[6]}"
-                           f"\n 8) {ranking_names[7].name} - {ranking_scores[7]}"
-                           f"\n 9) {ranking_names[8].name} - {ranking_scores[8]}"
-                           f"\n10) {ranking_names[9].name} - {ranking_scores[9]}```")
+        lb_field_value_1 = f"1)"\
+                         f"\n2)"\
+                         f"\n3)"\
+                         f"\n4)"\
+                         f"\n5)"\
+                         f"\n6)"\
+                         f"\n7)"\
+                         f"\n8)"\
+                         f"\n9)"\
+                         f"\n10)"
+
+        lb_field_value_2 = f"{ranking_names[0].name}"\
+                         f"\n{ranking_names[1].name}"\
+                         f"\n{ranking_names[2].name}"\
+                         f"\n{ranking_names[3].name}"\
+                         f"\n{ranking_names[4].name}"\
+                         f"\n{ranking_names[5].name}"\
+                         f"\n{ranking_names[6].name}"\
+                         f"\n{ranking_names[7].name}"\
+                         f"\n{ranking_names[8].name}"\
+                         f"\n{ranking_names[9].name}"
+
+        lb_field_value_3 = f"{ranking_scores[0]}" \
+                           f"\n{ranking_scores[1]}" \
+                           f"\n{ranking_scores[2]}" \
+                           f"\n{ranking_scores[3]}" \
+                           f"\n{ranking_scores[4]}" \
+                           f"\n{ranking_scores[5]}" \
+                           f"\n{ranking_scores[6]}" \
+                           f"\n{ranking_scores[7]}" \
+                           f"\n{ranking_scores[8]}" \
+                           f"\n{ranking_scores[9]}"
+
+        lb_embed.add_field(name="\u200b", value=lb_field_value_1, inline=True)
+        lb_embed.add_field(name="\u200b", value=lb_field_value_2, inline=True)
+        lb_embed.add_field(name="\u200b", value=lb_field_value_3, inline=True)
+        lb_embed.set_author(name="Leaderboard")
+        await channel.send(embed=lb_embed)
     else:
         await channel.send("There are not enough players registered to create a leaderboard. Try again later.")
     if ranking_names.index(ctx.author) > 10:
         await channel.send(f"```{ranking_names.index(ctx.author) + 1}) {ctx.author.name} - {ranking_scores[ranking_names.index(ctx.author)]}```")
+
 
 @client.command()
 async def stats(ctx):
@@ -806,112 +884,86 @@ async def stats(ctx):
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
+    for champ in character_stats.keys():
+        if champ != 'stat counter':
+            if character_stats[champ][2] + character_stats[champ][3] > 0:
+                character_stats[champ][4] = character_stats[champ][2] / (character_stats[champ][2] + character_stats[champ][3])
+
     channel = await ctx.author.create_dm()
 
     stats_embed = discord.Embed(
     title=None,
     description=None,
-    color=discord.Color.teal()
+    color=discord.Color.magenta()
     )
     character_field = "Bakko\nCroak\nFreya\nJamila\nRaigon\nRook\nRuh Kaan\nShifu\nThorn\nAlysia\nAshka\nDestiny\n" \
                       "Ezmo\nIva\nJade\nJumong\nShen Rao\nTaya\nVaresh\nBlossom\nLucie\nOldur\nPearl\nPestilus\n" \
                       "Poloma\nSirius\nUlric\nZander"
 
-    win_percent_field = f"{character_stats['bakko'][4]}%\n"\
-        f"{character_stats['croak'][4]}%\n"\
-        f"{character_stats['freya'][4]}%\n"\
-        f"{character_stats['jamila'][4]}%\n"\
-        f"{character_stats['raigon'][4]}%\n"\
-        f"{character_stats['rook'][4]}%\n"\
-        f"{character_stats['rk'][4]}%\n"\
-        f"{character_stats['shifu'][4]}%\n"\
-        f"{character_stats['thorn'][4]}%\n"\
-        f"{character_stats['alysia'][4]}%\n"\
-        f"{character_stats['ashka'][4]}%\n"\
-        f"{character_stats['destiny'][4]}%\n"\
-        f"{character_stats['ezmo'][4]}%\n"\
-        f"{character_stats['iva'][4]}%\n"\
-        f"{character_stats['jade'][4]}%\n"\
-        f"{character_stats['jumong'][4]}%\n"\
-        f"{character_stats['shen'][4]}%\n"\
-        f"{character_stats['taya'][4]}%\n"\
-        f"{character_stats['varesh'][4]}%\n"\
-        f"{character_stats['blossom'][4]}%\n"\
-        f"{character_stats['lucie'][4]}%\n"\
-        f"{character_stats['oldur'][4]}%\n"\
-        f"{character_stats['pearl'][4]}%\n"\
-        f"{character_stats['pestilus'][4]}%\n"\
-        f"{character_stats['poloma'][4]}%\n"\
-        f"{character_stats['sirius'][4]}%\n"\
-        f"{character_stats['ulric'][4]}%\n"\
-        f"{character_stats['zander'][4]}%\n"
+    win_percent_field = f"{round(character_stats['bakko'][4]*100)}\n"\
+        f"{round(character_stats['croak'][4]*100)}\n"\
+        f"{round(character_stats['freya'][4]*100)}\n"\
+        f"{round(character_stats['jamila'][4]*100)}\n"\
+        f"{round(character_stats['raigon'][4]*100)}\n"\
+        f"{round(character_stats['rook'][4]*100)}\n"\
+        f"{round(character_stats['ruh kaan'][4]*100)}\n"\
+        f"{round(character_stats['shifu'][4]*100)}\n"\
+        f"{round(character_stats['thorn'][4]*100)}\n"\
+        f"{round(character_stats['alysia'][4]*100)}\n"\
+        f"{round(character_stats['ashka'][4]*100)}\n"\
+        f"{round(character_stats['destiny'][4]*100)}\n"\
+        f"{round(character_stats['ezmo'][4]*100)}\n"\
+        f"{round(character_stats['iva'][4]*100)}\n"\
+        f"{round(character_stats['jade'][4]*100)}\n"\
+        f"{round(character_stats['jumong'][4]*100)}\n"\
+        f"{round(character_stats['shen rao'][4]*100)}\n"\
+        f"{round(character_stats['taya'][4]*100)}\n"\
+        f"{round(character_stats['varesh'][4]*100)}\n"\
+        f"{round(character_stats['blossom'][4]*100)}\n"\
+        f"{round(character_stats['lucie'][4]*100)}\n"\
+        f"{round(character_stats['oldur'][4]*100)}\n"\
+        f"{round(character_stats['pearl'][4]*100)}\n"\
+        f"{round(character_stats['pestilus'][4]*100)}\n"\
+        f"{round(character_stats['poloma'][4]*100)}\n"\
+        f"{round(character_stats['sirius'][4]*100)}\n"\
+        f"{round(character_stats['ulric'][4]*100)}\n"\
+        f"{round(character_stats['zander'][4]*100)}\n"
 
-    pick_rate_field = f"{round(character_stats['bakko'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['croak'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['freya'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['jamila'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['raigon'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['rook'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['rk'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['shifu'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['thorn'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['alysia'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['ashka'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['destiny'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['ezmo'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['iva'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['jade'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['jumong'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['shen'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['taya'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['varesh'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['blossom'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['lucie'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['oldur'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['pearl'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['pestilus'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['poloma'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['sirius'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['ulric'][1] / character_stats['stat counter'], 1)}%\n"\
-        f"{round(character_stats['zander'][1] / character_stats['stat counter'], 1)}%\n"
+    pick_ban_rate_field = f"{round(100*character_stats['bakko'][1] / character_stats['stat counter'])}/{round(100*character_stats['bakko'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['croak'][1] / character_stats['stat counter'])}/{round(100*character_stats['croak'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['freya'][1] / character_stats['stat counter'])}/{round(100*character_stats['freya'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jamila'][1] / character_stats['stat counter'])}/{round(100*character_stats['jamila'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['raigon'][1] / character_stats['stat counter'])}/{round(100*character_stats['raigon'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['rook'][1] / character_stats['stat counter'])}/{round(100*character_stats['rook'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ruh kaan'][1] / character_stats['stat counter'])}/{round(100*character_stats['ruh kaan'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['shifu'][1] / character_stats['stat counter'])}/{round(100*character_stats['shifu'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['thorn'][1] / character_stats['stat counter'])}/{round(100*character_stats['thorn'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['alysia'][1] / character_stats['stat counter'])}/{round(100*character_stats['alysia'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ashka'][1] / character_stats['stat counter'])}/{round(100*character_stats['ashka'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['destiny'][1] / character_stats['stat counter'])}/{round(100*character_stats['destiny'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ezmo'][1] / character_stats['stat counter'])}/{round(100*character_stats['ezmo'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['iva'][1] / character_stats['stat counter'])}/{round(100*character_stats['iva'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jade'][1] / character_stats['stat counter'])}/{round(100*character_stats['jade'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jumong'][1] / character_stats['stat counter'])}/{round(100*character_stats['jumong'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['shen rao'][1] / character_stats['stat counter'])}/{round(100*character_stats['shen rao'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['taya'][1] / character_stats['stat counter'])}/{round(100*character_stats['taya'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['varesh'][1] / character_stats['stat counter'])}/{round(100*character_stats['varesh'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['blossom'][1] / character_stats['stat counter'])}/{round(100*character_stats['blossom'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['lucie'][1] / character_stats['stat counter'])}/{round(100*character_stats['lucie'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['oldur'][1] / character_stats['stat counter'])}/{round(100*character_stats['oldur'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['pearl'][1] / character_stats['stat counter'])}/{round(100*character_stats['pearl'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['pestilus'][1] / character_stats['stat counter'])}/{round(100*character_stats['pestilus'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['poloma'][1] / character_stats['stat counter'])}/{round(100*character_stats['poloma'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['sirius'][1] / character_stats['stat counter'])}/{round(100*character_stats['sirius'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ulric'][1] / character_stats['stat counter'])}/{round(100*character_stats['ulric'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['zander'][1] / character_stats['stat counter'])}/{round(100*character_stats['zander'][0] / character_stats['stat counter'])}\n"
 
-    ban_rate_field = f"{round(character_stats['bakko'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['croak'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['freya'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['jamila'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['raigon'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['rook'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['rk'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['shifu'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['thorn'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['alysia'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['ashka'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['destiny'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['ezmo'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['iva'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['jade'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['jumong'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['shen'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['taya'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['varesh'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['blossom'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['lucie'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['oldur'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['pearl'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['pestilus'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['poloma'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['sirius'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['ulric'][0] / character_stats['stat counter'], 1)}%\n" \
-        f"{round(character_stats['zander'][0] / character_stats['stat counter'], 1)}%\n"
-
-    stats_embed.add_field(title='Champions', value=character_field, inline=True)
-    stats_embed.add_field(title='Win Percent', value=win_percent_field, inline=True)
-    stats_embed.add_field(title='Pick Rate', value=pick_rate_field, inline=True)
-    stats_embed.add_field(title='Ban Rate', value=ban_rate_field, inline=True)
+    stats_embed.add_field(name='Champions', value=character_field, inline=True)
+    stats_embed.add_field(name='Winrate %', value=win_percent_field, inline=True)
+    stats_embed.add_field(name='Pick/Ban %', value=pick_ban_rate_field, inline=True)
     stats_embed.set_author(name='Champion Statistics')
 
-    channel.send(embed=stats_embed)
-
+    await channel.send(embed=stats_embed)
 
 
 client.run(TOKEN)
