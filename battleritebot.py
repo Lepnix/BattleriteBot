@@ -749,7 +749,7 @@ async def mr(ctx, arg):
         elif (arg == 'd' or arg == 'drop') and user_dictionary[ctx.author].dropped:
             await channel.send(f"You have already voted to drop the match. `{REQUIRED_VOTERS - match_dictionary[user_dictionary[ctx.author].last_match_id].drop_votes}` more people must vote in order to drop the match.")
         else:
-            await channel.send(f"`{arg}` is not recognized as a valid result. Please report the match with `!mr <w/l>`")
+            await channel.send(f"You have already reported or have entered an invalid result. Please report the match with `!mr <w/l>`")
 
         if match_dictionary[user_dictionary[ctx.author].last_match_id].team1_win_votes == REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author].last_match_id].closed:
             closeMatch(user_dictionary[ctx.author].last_match_id, 1)
@@ -762,11 +762,9 @@ async def mr(ctx, arg):
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has ended. Team 1 has won.")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team1:
-                user_dictionary[player].in_match = False
                 channel = await player.create_dm()
                 await channel.send(f"Your last match has been reported as a win. Your new rating is: `{user_dictionary[player].display_rating}`")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team2:
-                user_dictionary[player].in_match = False
                 channel = await player.create_dm()
                 await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player].display_rating}`")
         elif match_dictionary[user_dictionary[ctx.author].last_match_id].team2_win_votes == REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author].last_match_id].closed:
@@ -780,16 +778,12 @@ async def mr(ctx, arg):
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has ended. Team 2 has won.")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team2:
-                user_dictionary[player].in_match = False
                 channel = await player.create_dm()
                 await channel.send(f"Your last match has been reported as a win. Your new rating is: `{user_dictionary[player].display_rating}`")
             for player in match_dictionary[user_dictionary[ctx.author].last_match_id].team1:
-                user_dictionary[player].in_match = False
                 channel = await player.create_dm()
                 await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player].display_rating}`")
         elif match_dictionary[user_dictionary[ctx.author].last_match_id].drop_votes == REQUIRED_VOTERS:
-            for player in match_dictionary[user_dictionary[ctx.author].last_match_id].players.keys():
-                user_dictionary[player].in_match = False
             closeMatch(user_dictionary[ctx.author].last_match_id, 3)
             channel = client.get_channel(MATCH_CHANNEL_ID)
             await channel.send(f"Match `#{user_dictionary[ctx.author].last_match_id}` has been dropped.")
