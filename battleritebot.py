@@ -541,7 +541,7 @@ async def queue(ctx, action, role=None):
     nail_member = guild.get_role(NAIL_MEMBER_ID)
     nail_trial = guild.get_role(NAIL_TRIAL_ID)
 
-    if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)):
+    if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)) and ctx.author.id != 311749899614158848:
         if action == 'join' or action == 'j':
             if not ctx.author in (item[0] for item in queue_channel):   #checks if author is in a list of the first element of queue_channel
                 if not user_dictionary[ctx.author].in_match:
