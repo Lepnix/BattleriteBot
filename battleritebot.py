@@ -343,14 +343,14 @@ def matchAnalysis(info):
 
     id = int(info[0])
     b1 = info[1]
-    b2 = info[3]
-    b3 = info[2]
+    b2 = info[2]
+    b3 = info[3]
     b4 = info[4]
     p1 = info[5]
-    p2 = info[7]
-    p3 = info[9]
-    p4 = info[6]
-    p5 = info[8]
+    p2 = info[6]
+    p3 = info[7]
+    p4 = info[8]
+    p5 = info[9]
     p6 = info[10]
 
     character_stats[b1][0] += 1
@@ -393,14 +393,14 @@ def matchPickBan(info):
     global match_dictionary
 
     b1 = info[1]
-    b2 = info[3]
-    b3 = info[2]
+    b2 = info[2]
+    b3 = info[3]
     b4 = info[4]
     p1 = info[5]
-    p2 = info[7]
-    p3 = info[9]
-    p4 = info[6]
-    p5 = info[8]
+    p2 = info[6]
+    p3 = info[7]
+    p4 = info[8]
+    p5 = info[9]
     p6 = info[10]
 
     character_stats[b1][0] += 1
