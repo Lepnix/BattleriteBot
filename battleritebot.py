@@ -448,7 +448,7 @@ async def on_ready():
 
     i = 0
     while i < len(user_pickle_information):
-        name = guild.get_member(user_pickle_information[i][0])
+        name = guild.get_member_named(user_pickle_information[i][0])
         createUser(name)
         user_dictionary[name].points = trueskill.Rating(mu=user_pickle_information[i][1], sigma=user_pickle_information[i][2])
         user_dictionary[name].wins = user_pickle_information[i][3]
