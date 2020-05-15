@@ -470,7 +470,7 @@ async def on_ready():
 #build command
 @client.command()
 async def build(ctx, char):
-    await ctx.send(BUILDS[char.lower()])
+    await ctx.send("Someone give me good builds and stop flaming the ones I got from Dio and I'll put them here.")
 
 
 #register new user
