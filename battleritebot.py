@@ -724,7 +724,7 @@ async def draft(ctx, arg):
             channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
             await channel.send(embed=match_embed)
             channel = client.get_channel(DRAFT_CHANNEL_ID)
-            await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id}"
+            await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id} "
                                f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id} {banned_champs[0]} {banned_champs[1]} {banned_champs[2]}")
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
             await ctx.channel.send("It is not your turn to pick.")
