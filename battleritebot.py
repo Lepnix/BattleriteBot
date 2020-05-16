@@ -46,6 +46,7 @@ SERVER_ID = 599028066991341578
 BANNED_ROLE_ID = 705858676648443934
 NAIL_MEMBER_ID = 707425411616997489
 NAIL_TRIAL_ID = 707429917586882680
+NAIL_CONTROL_ID = 711074798746337291
 DRAFT_BOT_ID = 696541378317910096
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
@@ -540,6 +541,7 @@ async def queue(ctx, action, role=None):
     ban_role = guild.get_role(BANNED_ROLE_ID)
     nail_member = guild.get_role(NAIL_MEMBER_ID)
     nail_trial = guild.get_role(NAIL_TRIAL_ID)
+    nail_control = guild.get_role(NAIL_CONTROL_ID)
 
     if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)) and ctx.author.id != 311749899614158848:
         if action == 'join' or action == 'j':
@@ -594,7 +596,10 @@ async def queue(ctx, action, role=None):
                 await channel.send("You are not in queue.")
         elif action == 'purge' or action == 'p':
             if not ctx.author in purge_voters:
-                purge_voters.append(ctx.author)
+                if nail_control in ctx.author.roles:
+                    purge_voters.extend([ctx.author, ctx.author, ctx.author, ctx.author])
+                else:
+                    purge_voters.append(ctx.author)
                 if len(purge_voters) < REQUIRED_VOTERS:
                     await channel.send(f"You have voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
                 else:
