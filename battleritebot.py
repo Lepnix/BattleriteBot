@@ -2,10 +2,10 @@ from discord.ext import commands
 from discord import *
 import discord
 import operator
-import trueskill
 import random
 import dill as pickle
 import discord.member
+from elo import rate_1vs1
 
 client = commands.Bot(command_prefix='!')
 client.remove_command('help')
@@ -16,7 +16,7 @@ BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak':
           'rook': 't2, rE, rS, yS, gQ', 'ruh kaan': 'g1, p1, wS, wE, rE', 'rk': 'g1, p1, wS, wE, rE',
           'shifu': 'p2, rS, rQ, gQ, rR', 'thorn': 'r1, gS, pE, rE, wR', 'alysia': 'p2, tQ, rQ, tE, rR',
           'destiny': 'g1, rS, yS, yE, pR', 'ezmo': "p2, b2, rS', rS'', bE", 'iva': "r2', yQ, pE, bE, pR",
-          'jade' : 'b1, r2, p2, bS, rQ', 'jumong': 'p2, pE, rQ, pQ, yR', 'shen rao': 'b2, tS, bQ, yE, yR',
+          'jade': 'b1, r2, p2, bS, rQ', 'jumong': 'p2, pE, rQ, pQ, yR', 'shen rao': 'b2, tS, bQ, yE, yR',
           'shen': 'b2, tS, bQ, yE, yR', 'taya': 'p1, g1, y2, yQ, yE', 'varesh': 'g1, r2, p2, pS, bE',
           'blossom': 't1, t2, yS, yQ, pE', 'lucie': 'g1, t2, r2, yS, wQ', 'oldur': 'w1, b1, t2, tS, yQ',
           'pearl': 'r1, p1, t2, pQ, tE', 'pestilus': 'tQ, pQ, pE, rE, wR', 'pest': 'tQ, pQ, pE, rE, wR',
@@ -24,9 +24,9 @@ BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak':
           'zander': 't1, b2, p2, wS, bS'}
 
 character_stats = {'freya': [0, 0, 0, 0, 0], 'ashka': [0, 0, 0, 0, 0], 'croak': [0, 0, 0, 0, 0], 'bakko': [0, 0, 0, 0, 0],
-                   'jamila': [0, 0, 0, 0, 0], 'raigon': [0, 0, 0, 0, 0],'rook': [0, 0, 0, 0, 0], 'ruh kaan': [0, 0, 0, 0, 0],
+                   'jamila': [0, 0, 0, 0, 0], 'raigon': [0, 0, 0, 0, 0], 'rook': [0, 0, 0, 0, 0], 'ruh kaan': [0, 0, 0, 0, 0],
                    'shifu': [0, 0, 0, 0, 0], 'thorn': [0, 0, 0, 0, 0], 'alysia': [0, 0, 0, 0, 0], 'destiny': [0, 0, 0, 0, 0],
-                   'ezmo': [0, 0, 0, 0, 0], 'iva': [0, 0, 0, 0, 0], 'jade' : [0, 0, 0, 0, 0], 'jumong': [0, 0, 0, 0, 0],
+                   'ezmo': [0, 0, 0, 0, 0], 'iva': [0, 0, 0, 0, 0], 'jade': [0, 0, 0, 0, 0], 'jumong': [0, 0, 0, 0, 0],
                    'shen rao': [0, 0, 0, 0, 0], 'taya': [0, 0, 0, 0, 0], 'varesh': [0, 0, 0, 0, 0], 'blossom': [0, 0, 0, 0, 0],
                    'lucie': [0, 0, 0, 0, 0], 'oldur': [0, 0, 0, 0, 0], 'pearl': [0, 0, 0, 0, 0], 'pestilus': [0, 0, 0, 0, 0],
                    'poloma': [0, 0, 0, 0, 0], 'sirius': [0, 0, 0, 0, 0], 'ulric': [0, 0, 0, 0, 0], 'zander': [0, 0, 0, 0, 0],
@@ -37,17 +37,17 @@ queue_channel = []
 user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
-MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', 'Great Market Night', 'Meriko Summit Night', 'Mount Araz Day', 'Sky Ring Night']
+MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', 'Great Market Night', 'Meriko Summit Night', 'Mount Araz Day']
 QUEUE_CHANNEL_ID = 705836610410774528
 MATCH_CHANNEL_ID = 705836635241185354
 MISC_COMMANDS_ID = 705836678891307089
 DRAFT_CHANNEL_ID = 698678134085779466
 SERVER_ID = 599028066991341578
 BANNED_ROLE_ID = 705858676648443934
+NAIL_CONTROL_ID = 711074798746337291
 NAIL_MEMBER_ID = 707425411616997489
 NAIL_TRIAL_ID = 707429917586882680
-NAIL_CONTROL_ID = 711074798746337291
-DRAFT_BOT_ID = 696541378317910096
+DRAFT_BOT_ID = 709635454252613643
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
 REQUIRED_VOTERS = 4
@@ -57,6 +57,8 @@ rankings = []
 ranking_names = []
 ranking_scores = []
 user_pickle_information = []
+banned_champs = []
+banned_players = []
 
 
 queue_embed = discord.Embed(
@@ -84,8 +86,9 @@ field_value_3 = ''
 class User:
     def __init__(self, name):
         self.name = name
-        self.points = trueskill.Rating()
-        self.display_rating = round(self.points.mu * 40)
+        self.id = name.id
+        self.points = 1000
+        self.display_rating = round(self.points)
         self.wins = 0
         self.losses = 0
         self.in_match = False
@@ -121,9 +124,9 @@ class Match:
         self.team1_win_votes = 0
         self.team2_win_votes = 0
         self.drop_votes = 0
-        self.map = MAP_POOL[random.randint(0, 6)]
+        self.map = MAP_POOL[random.randint(0, 5)]
         self.closed = False
-        purge_voters = []
+        purge_voters.clear()
         max = user_dictionary[self.draft_pool[0]].display_rating
         self.captain1 = self.draft_pool[0]
         for player in self.draft_pool:     #finds highest and second highest rated players, makes them captain1 and captain2, and removes them from pool
@@ -238,7 +241,6 @@ def createMatchEmbed(id):
 
 def createUser(name):
     user_dictionary[name] = User(name)
-    return
 
 
 def createMatch():
@@ -256,8 +258,9 @@ def sortRankings():
     ranking_scores = []
     i = 0
     for name in user_dictionary:
-        rankings.append([name, user_dictionary[name].display_rating, i + 1])
-        i += 1
+        if user_dictionary[name].wins + user_dictionary[name].losses > 9:
+            rankings.append([name, user_dictionary[name].display_rating, i + 1])
+            i += 1
     rankings = sorted(rankings, key=operator.itemgetter(1), reverse=True)
     k = 0
     while k < len(rankings):
@@ -268,6 +271,7 @@ def sortRankings():
         ranking_scores.append(rankings[k][1])
         k += 1
 
+
 def closeMatch(id, result):
     global user_dictionary
     global match_dictionary
@@ -275,42 +279,41 @@ def closeMatch(id, result):
     global match_pickle_out
     global user_pickle_information
 
-    if result == 1: #team 1 wins
+    sum = 0
+    for player in match_dictionary[id].team1:
+        sum += user_dictionary[player].points
+        team1_avg = sum / 3
+
+    sum = 0
+    for player in match_dictionary[id].team2:
+        sum += user_dictionary[player].points
+        team2_avg = sum / 3
+
+    if result == 1:   #team 1 wins
+        updated_team1_avg, updated_team2_avg = rate_1vs1(team1_avg, team2_avg)
+        team1_change = (updated_team1_avg - team1_avg) * 2
+        team2_change = (updated_team2_avg - team2_avg) * 2
         for player in match_dictionary[id].team1:
             user_dictionary[player].wins += 1
+            user_dictionary[player].points += team1_change
         for player in match_dictionary[id].team2:
             user_dictionary[player].losses += 1
-        new_rating = trueskill.rate([(user_dictionary[match_dictionary[id].team1[0]].points,
-                                      user_dictionary[match_dictionary[id].team1[1]].points,
-                                      user_dictionary[match_dictionary[id].team1[2]].points),
-                                     (user_dictionary[match_dictionary[id].team2[0]].points,
-                                      user_dictionary[match_dictionary[id].team2[1]].points,
-                                      user_dictionary[match_dictionary[id].team2[2]].points)])
-        user_dictionary[match_dictionary[id].team1[0]].points = new_rating[0][0]
-        user_dictionary[match_dictionary[id].team1[1]].points = new_rating[0][1]
-        user_dictionary[match_dictionary[id].team1[2]].points = new_rating[0][2]
-        user_dictionary[match_dictionary[id].team2[0]].points = new_rating[1][0]
-        user_dictionary[match_dictionary[id].team2[1]].points = new_rating[1][1]
-        user_dictionary[match_dictionary[id].team2[2]].points = new_rating[1][2]
+            user_dictionary[player].points += team2_change
 
     elif result == 2:   #team 2 wins
+        updated_team2_avg, updated_team1_avg = rate_1vs1(team2_avg, team1_avg)
+        team1_change = (updated_team1_avg - team1_avg) * 2
+        team2_change = (updated_team2_avg - team2_avg) * 2
         for player in match_dictionary[id].team2:
             user_dictionary[player].wins += 1
+            user_dictionary[player].points += team2_change
         for player in match_dictionary[id].team1:
             user_dictionary[player].losses += 1
+            user_dictionary[player].points += team1_change
 
-        new_rating = trueskill.rate([(user_dictionary[match_dictionary[id].team2[0]].points,
-                                      user_dictionary[match_dictionary[id].team2[1]].points,
-                                      user_dictionary[match_dictionary[id].team2[2]].points),
-                                     (user_dictionary[match_dictionary[id].team1[0]].points,
-                                      user_dictionary[match_dictionary[id].team1[1]].points,
-                                      user_dictionary[match_dictionary[id].team1[2]].points)])
-        user_dictionary[match_dictionary[id].team2[0]].points = new_rating[0][0]
-        user_dictionary[match_dictionary[id].team2[1]].points = new_rating[0][1]
-        user_dictionary[match_dictionary[id].team2[2]].points = new_rating[0][2]
-        user_dictionary[match_dictionary[id].team1[0]].points = new_rating[1][0]
-        user_dictionary[match_dictionary[id].team1[1]].points = new_rating[1][1]
-        user_dictionary[match_dictionary[id].team1[2]].points = new_rating[1][2]
+    for player in match_dictionary[id].players.keys():
+        if (user_dictionary[player].wins + user_dictionary[player].losses) <= 10:
+            user_dictionary[player].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
 
     for player in match_dictionary[id].players.keys():
         user_dictionary[player].in_match = False
@@ -318,14 +321,14 @@ def closeMatch(id, result):
         user_dictionary[player].is_captain2 = False
         user_dictionary[player].reported = False
         user_dictionary[player].dropped = False
-        user_dictionary[player].display_rating = round(user_dictionary[player].points.mu * 40)
+        user_dictionary[player].display_rating = round(user_dictionary[player].points)
 
     match_dictionary[id].closed = True
 
     user_pickle_information = []
 
     for user in user_dictionary.keys():
-        user_pickle_information.append([str(user_dictionary[user].name), user_dictionary[user].points.mu, user_dictionary[user].points.sigma, user_dictionary[user].wins, user_dictionary[user].losses])
+        user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses])
 
     user_pickle_out = open("user.pickle", "wb")
     pickle.dump(user_pickle_information, user_pickle_out)
@@ -449,12 +452,12 @@ async def on_ready():
 
     i = 0
     while i < len(user_pickle_information):
-        name = guild.get_member_named(user_pickle_information[i][0])
+        name = guild.get_member(user_pickle_information[i][0])
         createUser(name)
-        user_dictionary[name].points = trueskill.Rating(mu=user_pickle_information[i][1], sigma=user_pickle_information[i][2])
-        user_dictionary[name].wins = user_pickle_information[i][3]
-        user_dictionary[name].losses = user_pickle_information[i][4]
-        user_dictionary[name].display_rating = round(user_dictionary[name].points.mu * 40)
+        user_dictionary[name].points = user_pickle_information[i][1]
+        user_dictionary[name].wins = user_pickle_information[i][2]
+        user_dictionary[name].losses = user_pickle_information[i][3]
+        user_dictionary[name].display_rating = round(user_dictionary[name].points)
         i += 1
 
     match_pickle_in = open("match.pickle", "rb")
@@ -468,10 +471,9 @@ async def on_ready():
     print('Battlerite Bot is online.')
 
 
-#build command
 @client.command()
 async def build(ctx, char):
-    await ctx.send("Someone give me good builds and stop flaming the ones I got from Dio and I'll put them here.")
+    await ctx.send("Working on it.")
 
 
 #register new user
@@ -491,7 +493,7 @@ async def register(ctx):
         createUser(ctx.author)
         user_pickle_information = []
         for user in user_dictionary.keys():
-            user_pickle_information.append([str(user), user_dictionary[user].points.mu, user_dictionary[user].points.sigma, user_dictionary[user].wins, user_dictionary[user].losses])
+            user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses])
         user_pickle_out = open("user.pickle", "wb")
         pickle.dump(user_pickle_information, user_pickle_out)
         user_pickle_out.close()
@@ -538,12 +540,10 @@ async def queue(ctx, action, role=None):
 
     channel = await ctx.author.create_dm()
     guild = client.get_guild(SERVER_ID)
-    ban_role = guild.get_role(BANNED_ROLE_ID)
     nail_member = guild.get_role(NAIL_MEMBER_ID)
     nail_trial = guild.get_role(NAIL_TRIAL_ID)
-    nail_control = guild.get_role(NAIL_CONTROL_ID)
 
-    if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)) and ctx.author.id != 311749899614158848:
+    if (ctx.author in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)) and (ctx.author.id not in banned_players):
         if action == 'join' or action == 'j':
             if not ctx.author in (item[0] for item in queue_channel):   #checks if author is in a list of the first element of queue_channel
                 if not user_dictionary[ctx.author].in_match:
@@ -596,18 +596,18 @@ async def queue(ctx, action, role=None):
                 await channel.send("You are not in queue.")
         elif action == 'purge' or action == 'p':
             if not ctx.author in purge_voters:
+                nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
                 if nail_control in ctx.author.roles:
                     purge_voters.extend([ctx.author, ctx.author, ctx.author, ctx.author])
-                else:
-                    purge_voters.append(ctx.author)
+                purge_voters.append(ctx.author)
                 if len(purge_voters) < REQUIRED_VOTERS:
                     await channel.send(f"You have voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
                 else:
-                    purge_voters = []
+                    purge_voters.clear()
                     for player in queue_channel:
                         channel = await player[0].create_dm()
                         await channel.send("The queue has been purged.")
-                    queue_channel = []
+                    queue_channel.clear()
                     updateQueueTableData()
                     updateQueueEmbed()
                     await queue_table_message.edit(embed=queue_embed)
@@ -617,7 +617,10 @@ async def queue(ctx, action, role=None):
             await channel.send(f"`{action}` is not a recognized command.")
 
     elif not ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)):
-        await channel.send("You currently do not have a NAIL role. Talk to a moderator to receive the NAIL Trial Member role.")
+        await channel.send("You currently do not have a NAIL role. Talk to an administrator to receive the NAIL Trial Member role.")
+
+    elif ctx.author.id in banned_players:
+        await channel.send("You are currently banned from NAIL.")
 
     else:
         await channel.send("You have not yet registered. Please register using the `!register` command in misc-command channel.")
@@ -643,9 +646,14 @@ async def info(ctx):
                                    f"\nRecord:"\
                                    f"\nRanking:"
 
-        info_embed_field_value_2 = f"{user_dictionary[ctx.author].display_rating}"\
-                                   f"\n{user_dictionary[ctx.author].wins}-{user_dictionary[ctx.author].losses}"\
-                                   f"\n{ranking_names.index(ctx.author)+1}/{len(ranking_names)}"
+        if ctx.author in ranking_names:
+            info_embed_field_value_2 = f"{user_dictionary[ctx.author].display_rating}" \
+                f"\n{user_dictionary[ctx.author].wins}-{user_dictionary[ctx.author].losses}" \
+                f"\n{ranking_names.index(ctx.author) + 1}/{len(ranking_names)}"
+        else:
+            info_embed_field_value_2 = f"{user_dictionary[ctx.author].display_rating}" \
+                f"\n{user_dictionary[ctx.author].wins}-{user_dictionary[ctx.author].losses}" \
+                f"\nComplete {10 - (user_dictionary[ctx.author].wins + user_dictionary[ctx.author].losses)} more games to place."
 
         info_embed.add_field(name=f"{ctx.author.name}", value=info_embed_field_value_1, inline=True)
         info_embed.add_field(name="\u200b", value=info_embed_field_value_2, inline=True)
@@ -711,8 +719,13 @@ async def draft(ctx, arg):
             createMatchEmbed(user_dictionary[ctx.author].last_match_id)
             await channel.send(embed=match_embed)
             await channel.send("Please report the match with `!mr <w/l>`")
+            channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.create_dm()
+            await channel.send(embed=match_embed)
+            channel = await match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.create_dm()
+            await channel.send(embed=match_embed)
             channel = client.get_channel(DRAFT_CHANNEL_ID)
-            await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id}")
+            await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id}"
+                               f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id} {banned_champs[0]} {banned_champs[1]} {banned_champs[2]}")
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
             await ctx.channel.send("It is not your turn to pick.")
         else:
@@ -871,9 +884,18 @@ async def leaderboard(ctx):
         lb_embed.set_author(name="Leaderboard")
         await channel.send(embed=lb_embed)
     else:
-        await channel.send("There are not enough players registered to create a leaderboard. Try again later.")
-    if ranking_names.index(ctx.author) > 10:
-        await channel.send(f"```{ranking_names.index(ctx.author) + 1}) {ctx.author.name} - {ranking_scores[ranking_names.index(ctx.author)]}```")
+        await channel.send("There are not enough players who have placed to create a leaderboard. Try again later.")
+    if ctx.author in ranking_names:
+        if ranking_names.index(ctx.author) > 9:
+            embed = discord.Embed(
+                title=None,
+                description=None,
+                color=discord.Color.magenta()
+            )
+            embed.add_field(name="\u200b", value=f"{ranking_names.index(ctx.author) + 1})", inline=True)
+            embed.add_field(name="\u200b", value=f"{ctx.author.name}", inline=True)
+            embed.add_field(name="\u200b", value=f"{ranking_scores[ranking_names.index(ctx.author)]}", inline=True)
+            await channel.send(embed=embed)
 
 
 @client.command()
@@ -963,6 +985,81 @@ async def stats(ctx):
     stats_embed.set_author(name='Champion Statistics')
 
     await channel.send(embed=stats_embed)
+
+@client.command(aliases=['wb'])
+async def weeklyban(ctx, champ1, champ2, champ3):
+    global banned_champs
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control in ctx.author.roles:
+        banned_champs = [champ1, champ2, champ3]
+
+@client.command()
+async def bans(ctx):
+    global banned_champs
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+    if len(banned_champs) == 0:
+        await channel.send("There currently are no champions banned from NAIL.")
+    else:
+        await channel.send(f"The current champions banned from NAIL are: {banned_champs[0]}, {banned_champs[1]}, and {banned_champs[2]}")
+
+@client.command(aliases=['wr'])
+async def winrates(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    wr_message = ""
+
+    for player in user_dictionary:
+        if user_dictionary[player].losses > 0:
+            if user_dictionary[player].wins / (user_dictionary[player].losses + user_dictionary[player].wins) < .4:
+                wr_message += f"{player.name}  {user_dictionary[player].wins}-{user_dictionary[player].wins}\n"
+    await channel.send(f"```\n{wr_message}```")
+
+@client.command()
+async def ban(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    if int(arg) in banned_players:
+        await channel.send("That player is already banned.")
+    else:
+        banned_players.append(int(arg))
+
+@client.command()
+async def unban(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    if int(arg) in banned_players:
+        banned_players.remove(int(arg))
+    else:
+        await channel.send("That player is not banned.")
 
 
 client.run(TOKEN)
