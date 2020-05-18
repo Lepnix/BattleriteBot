@@ -1030,7 +1030,7 @@ async def winrates(ctx):
     for player in user_dictionary:
         if user_dictionary[player].losses > 0:
             if user_dictionary[player].wins / (user_dictionary[player].losses + user_dictionary[player].wins) < .4:
-                wr_message += f"{player.name}  {user_dictionary[player].wins}-{user_dictionary[player].wins}\n"
+                wr_message += f"{player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
     await channel.send(f"```\n{wr_message}```")
 
 @client.command()
