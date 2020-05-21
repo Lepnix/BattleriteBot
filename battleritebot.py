@@ -1032,7 +1032,10 @@ async def weeklyban(ctx, *, champs):
     nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
 
     if nail_control in ctx.author.roles:
-        banned_champs = champs.split(",")
+        if champs == "None":
+            banned_champs.clear()
+        else:
+            banned_champs = champs.split(",")
         banned_champs_pickle_out = open("banned_champs.pickle", "wb")
         pickle.dump(banned_champs, banned_champs_pickle_out)
         banned_champs_pickle_out.close()
