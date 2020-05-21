@@ -37,7 +37,10 @@ queue_channel = []
 user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
-MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', 'Great Market Night', 'Meriko Summit Night', 'Mount Araz Day']
+MAP_POOL = ['Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
+            'Meriko Summit - Night', 'Mount Araz - Day', 'Meriko Summit - Day', 'Blackstone Arena - Night',
+            'Orman Temple - Day', 'Orman Temple - Night', 'Sky Ring - Day', 'Sky Ring - Night', 'Dragon Garden - Day',
+            'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night', 'Great Market - Day']
 QUEUE_CHANNEL_ID = 712809382487785472
 MATCH_CHANNEL_ID = 712809411243933697
 MISC_COMMANDS_ID = 712809437034709133
@@ -126,7 +129,7 @@ class Match:
         self.team1_win_votes = 0
         self.team2_win_votes = 0
         self.drop_votes = 0
-        self.map = MAP_POOL[random.randint(0, 5)]
+        self.map = MAP_POOL[random.randint(0, 15)]
         self.closed = False
         purge_voters.clear()
         max = user_dictionary[self.draft_pool[0]].display_rating
@@ -1239,6 +1242,7 @@ async def resetstrikes(ctx, arg):
         user_pickle_out.close()
 
 
+@client.command()
 async def resetpb(ctx):
     if ctx.channel.id != MISC_COMMANDS_ID:
         return
@@ -1248,7 +1252,7 @@ async def resetpb(ctx):
     if nail_control not in ctx.author.roles:
         return
 
-    for i in character_stats:
+    for i in character_stats.keys():
         if i != 'stat counter':
             character_stats[i][0], character_stats[i][1] = 0
         else:
