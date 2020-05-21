@@ -38,15 +38,14 @@ user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
 MAP_POOL = ['Mount Araz Night', 'Blackstone Arena Day', 'Dragon Garden Night', 'Great Market Night', 'Meriko Summit Night', 'Mount Araz Day']
-QUEUE_CHANNEL_ID = 705836610410774528
-MATCH_CHANNEL_ID = 705836635241185354
-MISC_COMMANDS_ID = 705836678891307089
-DRAFT_CHANNEL_ID = 698678134085779466
-SERVER_ID = 599028066991341578
-BANNED_ROLE_ID = 705858676648443934
-NAIL_CONTROL_ID = 711074798746337291
-NAIL_MEMBER_ID = 707425411616997489
-NAIL_TRIAL_ID = 707429917586882680
+QUEUE_CHANNEL_ID = 712809382487785472
+MATCH_CHANNEL_ID = 712809411243933697
+MISC_COMMANDS_ID = 712809437034709133
+DRAFT_CHANNEL_ID = 712809357988986980
+SERVER_ID = 712808385204060202
+NAIL_CONTROL_ID = 712810025462136853
+NAIL_MEMBER_ID = 712809993673637930
+NAIL_TRIAL_ID = 712858389264334861
 DRAFT_BOT_ID = 709635454252613643
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
@@ -59,6 +58,8 @@ ranking_scores = []
 user_pickle_information = []
 banned_champs = []
 banned_players = []
+complaints = {}
+complaint_pickle_info = {}
 
 
 queue_embed = discord.Embed(
@@ -91,6 +92,7 @@ class User:
         self.display_rating = round(self.points)
         self.wins = 0
         self.losses = 0
+        self.strikes = 0
         self.in_match = False
         self.is_captain1 = False
         self.is_captain2 = False
@@ -433,20 +435,22 @@ async def on_ready():
     global queue_table_data
     global user_dictionary
     global match_dictionary
-    global user_pickle_in
-    global match_pickle_in
-    global stats_pickle_in
     global match_counter
     global character_stats
+    global banned_champs
+    global complaint_pickle_info
     updateQueueEmbed()
     channel = client.get_channel(QUEUE_CHANNEL_ID)
     await channel.purge()
     queue_table_message = await channel.send(embed=queue_embed)
     user_pickle_information = []
 
-    user_pickle_in = open("user.pickle", "rb")
-    user_pickle_information = pickle.load(user_pickle_in)
-    user_pickle_in.close()
+    try:
+        user_pickle_in = open("user.pickle", "rb")
+        user_pickle_information = pickle.load(user_pickle_in)
+        user_pickle_in.close()
+    except:
+        pass
 
     guild = client.get_guild(SERVER_ID)
 
@@ -458,15 +462,39 @@ async def on_ready():
         user_dictionary[name].wins = user_pickle_information[i][2]
         user_dictionary[name].losses = user_pickle_information[i][3]
         user_dictionary[name].display_rating = round(user_dictionary[name].points)
+        if len(user_pickle_information[i]) == 4:
+            user_pickle_information[i].append(0)
+        elif len(user_pickle_information[i]) == 5:
+            user_dictionary[name].strikes = user_pickle_information[i][4]
         i += 1
 
-    match_pickle_in = open("match.pickle", "rb")
-    match_counter = pickle.load(match_pickle_in)
-    match_pickle_in.close()
+    try:
+        match_pickle_in = open("match.pickle", "rb")
+        match_counter = pickle.load(match_pickle_in)
+        match_pickle_in.close()
+    except:
+        pass
 
-    stats_pickle_in = open("stats.pickle", "rb")
-    character_stats = pickle.load(stats_pickle_in)
-    stats_pickle_in.close()
+    try:
+        stats_pickle_in = open("stats.pickle", "rb")
+        character_stats = pickle.load(stats_pickle_in)
+        stats_pickle_in.close()
+    except:
+        pass
+
+    try:
+        banned_champs_pickle_in = open("banned_champs.pickle", "rb")
+        banned_champs = pickle.load(banned_champs_pickle_in)
+        banned_champs_pickle_in.close()
+    except:
+        pass
+
+    try:
+        complaint_pickle_in = open("complaints.pickle", "rb")
+        complaint_pickle_info = pickle.load(complaint_pickle_in)
+        complaint_pickle_in.close()
+    except:
+        pass
 
     print('Battlerite Bot is online.')
 
@@ -725,10 +753,10 @@ async def draft(ctx, arg):
             await channel.send(embed=match_embed)
             channel = client.get_channel(DRAFT_CHANNEL_ID)
             if len(banned_champs) == 3:
-                await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id} "
-                                   f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id} {banned_champs[0]} {banned_champs[1]} {banned_champs[2]}")
+                await channel.send(f"{user_dictionary[ctx.author].last_match_id},{match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id},"
+                                   f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
             else:
-                await channel.send(f"{user_dictionary[ctx.author].last_match_id} {match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id} "
+                await channel.send(f"{user_dictionary[ctx.author].last_match_id},{match_dictionary[user_dictionary[ctx.author].last_match_id].captain1.id},"
                                    f"{match_dictionary[user_dictionary[ctx.author].last_match_id].captain2.id}")
         elif user_dictionary[ctx.author].is_captain1 and len(match_dictionary[user_dictionary[ctx.author].last_match_id].draft_pool) == 2:
             await ctx.channel.send("It is not your turn to pick.")
@@ -824,6 +852,8 @@ async def help(ctx):
                        f"\n!draft <#> - used if you are a captain and the bot messages you to draft a player"
                        f"\n!leaderboard(lb) - bot messages you a top 10 leaderboard"
                        f"\n!stats - bot messages you a list of all the champs and their respective winrates, pickrates, and banrates"
+                       f"\n!complain <name#1234> <explanation> - submits an anonymous complaint about a player"
+                       f"\n!strikes - displays how many strikes you have"
                        f"\n\nQueue Channel Commands:"
                        f"\n!queue(q) join(j) <fill(f)/dps(d)/support(s)> - joins the queue as the desired role"
                        f"\n!queue(q) leave(l) - leaves the queue"
@@ -991,7 +1021,7 @@ async def stats(ctx):
     await channel.send(embed=stats_embed)
 
 @client.command(aliases=['wb'])
-async def weeklyban(ctx, champ1, champ2, champ3):
+async def weeklyban(ctx, *, champs):
     global banned_champs
     if ctx.channel.id != MISC_COMMANDS_ID:
         return
@@ -999,7 +1029,10 @@ async def weeklyban(ctx, champ1, champ2, champ3):
     nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
 
     if nail_control in ctx.author.roles:
-        banned_champs = [champ1, champ2, champ3]
+        banned_champs = champs.split(",")
+        banned_champs_pickle_out = open("banned_champs.pickle", "wb")
+        pickle.dump(banned_champs, banned_champs_pickle_out)
+        banned_champs_pickle_out.close()
 
 @client.command()
 async def bans(ctx):
@@ -1011,7 +1044,7 @@ async def bans(ctx):
     if len(banned_champs) == 0:
         await channel.send("There currently are no champions banned from NAIL.")
     else:
-        await channel.send(f"The current champions banned from NAIL are: {banned_champs[0]}, {banned_champs[1]}, and {banned_champs[2]}")
+        await channel.send(f"The current champions banned from NAIL are: `{banned_champs[0]}`, `{banned_champs[1]}`, and `{banned_champs[2]}`")
 
 @client.command(aliases=['wr'])
 async def winrates(ctx):
@@ -1064,6 +1097,166 @@ async def unban(ctx, arg):
         banned_players.remove(int(arg))
     else:
         await channel.send("That player is not banned.")
+
+@client.command(aliases=["ss"])
+async def seasonstart(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    for player in user_pickle_information:
+        player[1] = 1000
+        player[2] = 0
+        player[3] = 0
+    user_pickle_out = open("user.pickle", "wb")
+    pickle.dump(user_pickle_information, user_pickle_out)
+    user_pickle_out.close()
+    await channel.send("All player stats have been reset.")
+
+@client.command()
+async def strike(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    if client.get_guild(SERVER_ID).get_member(int(arg)) in user_dictionary.keys():
+        user_dictionary[client.get_guild(SERVER_ID).get_member(int(arg))].strikes += 1
+        for i in user_pickle_information:
+            if i[0] == int(arg):
+                i[4] += 1
+        user_pickle_out = open("user.pickle", "wb")
+        pickle.dump(user_pickle_information, user_pickle_out)
+        user_pickle_out.close()
+
+@client.command()
+async def strikes(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    if ctx.author in user_dictionary:
+        await channel.send(f"Number of strikes: `{user_dictionary[ctx.author].strikes}`")
+    else:
+        await channel.send(f"You are not registered.")
+
+@client.command()
+async def complain(ctx, target, *, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    if ctx.author not in user_dictionary.keys():
+        channel = await ctx.author.create_dm()
+        await channel.send("You are not registered.")
+        return
+
+    if ctx.author.id == 311749899614158848:
+        channel = await ctx.author.create_dm()
+        await channel.send("Kas, I can't in good conscience give you the ability to file complaints.")
+        return
+
+    target_player = client.get_guild(SERVER_ID).get_member_named(target)
+    if not target_player in user_dictionary.keys():
+        channel = await ctx.author.create_dm()
+        await channel.send(f"`{target}` is not a registered NAIL user. Make sure you have typed their discord name correctly. ex. `!complain Name#1234 explanation`")
+    else:
+        if ctx.author.id not in complaint_pickle_info.keys():
+            complaint_pickle_info[ctx.author.id] = []
+        if target_player.id in complaint_pickle_info[ctx.author.id]:
+            channel = await ctx.author.create_dm()
+            await channel.send(f"You have already filed a complaint about this player. You may only file one complaint for each player.")
+        else:
+            complaint_pickle_info[ctx.author.id].append(target_player.id)
+            complaint_pickle_out = open("complaints.pickle", "wb")
+            pickle.dump(complaint_pickle_info, complaint_pickle_out)
+            complaint_pickle_out.close()
+            channel = await ctx.author.create_dm()
+            await channel.send(f"You have successfully submitted a complaint.")
+            channel = await client.get_user(166670770234195978).create_dm()
+            complaint = await channel.send(f"A new complaint has been filed for `{target_player.name}`:\n```\n{arg}```")
+            complaints[complaint.id] = ctx.author.name
+
+@client.command()
+async def uncomplain(ctx, target):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    target_player = client.get_guild(SERVER_ID).get_member_named(target)
+    if ctx.author.id not in complaint_pickle_info.keys():
+        channel = await ctx.author.create_dm()
+        await channel.send("You have not filed any complaints.")
+    elif target_player.id not in complaint_pickle_info[ctx.author.id]:
+        channel = await ctx.author.create_dm()
+        await channel.send(f"You have not filed any complaints for: `{target_player.name}`")
+    else:
+        complaint_pickle_info[ctx.author.id].remove(target_player.id)
+        complaint_pickle_out = open("complaints.pickle", "wb")
+        pickle.dump(complaint_pickle_info, complaint_pickle_out)
+        complaint_pickle_out.close()
+        channel = await ctx.author.create_dm()
+        await channel.send(f"You have revoked a complaint for: `{target_player.name}`")
+        channel = await client.get_user(166670770234195978).create_dm()
+        await channel.send(f"A complaint has been revoked for: `{target_player.name}`")
+
+
+@client.command()
+async def sender(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+    if ctx.author.id != 166670770234195978:
+        return
+
+    channel = await ctx.author.create_dm()
+    await channel.send(f"The sender of complaint ID `{arg}` is `{complaints[int(arg)]}`.")
+
+
+@client.command()
+async def resetstrikes(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    if client.get_guild(SERVER_ID).get_member(int(arg)) in user_dictionary.keys():
+        user_dictionary[client.get_guild(SERVER_ID).get_member(int(arg))].strikes = 0
+        for i in user_pickle_information:
+            if i[0] == int(arg):
+                i[4] = 0
+        user_pickle_out = open("user.pickle", "wb")
+        pickle.dump(user_pickle_information, user_pickle_out)
+        user_pickle_out.close()
+
+
+async def resetpb(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    for i in character_stats:
+        if i != 'stat counter':
+            character_stats[i][0], character_stats[i][1] = 0
+        else:
+            character_stats[i] = 0
+
+    stats_pickle_out = open("stats.pickle", "wb")
+    pickle.dump(character_stats, stats_pickle_out)
+    stats_pickle_out.close()
 
 
 client.run(TOKEN)
