@@ -1157,6 +1157,7 @@ async def strikes(ctx):
 
 @client.command()
 async def complain(ctx, target, *, arg):
+    global complaints
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
@@ -1193,6 +1194,8 @@ async def complain(ctx, target, *, arg):
 
 @client.command()
 async def uncomplain(ctx, target):
+    global complaint_pickle_info
+    global complaints
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
@@ -1227,6 +1230,7 @@ async def sender(ctx, arg):
 
 @client.command()
 async def resetstrikes(ctx, arg):
+    global user_pickle_information
     if ctx.channel.id != MISC_COMMANDS_ID:
         return
 
@@ -1247,6 +1251,7 @@ async def resetstrikes(ctx, arg):
 
 @client.command()
 async def resetpb(ctx):
+    global character_stats
     if ctx.channel.id != MISC_COMMANDS_ID:
         return
 
@@ -1268,6 +1273,7 @@ async def resetpb(ctx):
 
 @client.command()
 async def complaints(ctx):
+    global complaints
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
