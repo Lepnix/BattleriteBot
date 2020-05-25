@@ -1288,7 +1288,7 @@ async def complaints(ctx):
             complaint_count += 1
 
     channel = await ctx.author.create_dm()
-    await channel.send(f"Current # of complaints: {complaint_count}")
+    await channel.send(f"Current # of complaints: `{complaint_count}`")
 
 
 client.run(TOKEN)
