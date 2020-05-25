@@ -1268,7 +1268,7 @@ async def resetpb(ctx):
 
 @client.command()
 async def complaints(ctx):
-    if ctx.channel.id != MISC_COMMANDS_ID:
+    if ctx.channel.id != MISC_COMMANDS_ID or ctx.guild != None:
         return
 
     i = 0
