@@ -333,7 +333,7 @@ def closeMatch(id, result):
     user_pickle_information = []
 
     for user in user_dictionary.keys():
-        user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses])
+        user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses, user_dictionary[user].strikes])
 
     user_pickle_out = open("user.pickle", "wb")
     pickle.dump(user_pickle_information, user_pickle_out)
@@ -524,14 +524,14 @@ async def register(ctx):
         createUser(ctx.author)
         user_pickle_information = []
         for user in user_dictionary.keys():
-            user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses])
+            user_pickle_information.append([user_dictionary[user].id, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses, user_dictionary[user].strikes])
         user_pickle_out = open("user.pickle", "wb")
         pickle.dump(user_pickle_information, user_pickle_out)
         user_pickle_out.close()
         await channel.send('You have been successfully registered.')
 
 
-#clear channels after message is sent and process commands
+#clear channels after message is sent and processes commands
 @client.event
 async def on_message(ctx):
     global match_dictionary
@@ -1138,7 +1138,7 @@ async def strike(ctx, arg):
         user_dictionary[client.get_guild(SERVER_ID).get_member(int(arg))].strikes += 1
         for i in user_pickle_information:
             if i[0] == int(arg):
-                i[4] += 1
+                i[4] == user_dictionary[client.get_guild(SERVER_ID).get_member(int(arg))].strikes
         user_pickle_out = open("user.pickle", "wb")
         pickle.dump(user_pickle_information, user_pickle_out)
         user_pickle_out.close()
