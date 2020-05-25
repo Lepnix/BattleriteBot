@@ -1257,13 +1257,27 @@ async def resetpb(ctx):
 
     for i in character_stats.keys():
         if i != 'stat counter':
-            character_stats[i][0], character_stats[i][1] = 0
+            character_stats[i][0] = 0
+            character_stats[i][1] = 0
         else:
             character_stats[i] = 0
 
     stats_pickle_out = open("stats.pickle", "wb")
     pickle.dump(character_stats, stats_pickle_out)
     stats_pickle_out.close()
+
+@client.command()
+async def complaints(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    i = 0
+    for player in complaints.keys():
+        if ctx.author.id in complaints[player]:
+            i += 1
+
+    channel = await ctx.author.create_dm()
+    await channel.send(f"Current # of complaints: {i}")
 
 
 client.run(TOKEN)
