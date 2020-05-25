@@ -1271,13 +1271,13 @@ async def complaints(ctx):
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
-    i = 0
+    complaint_count = 0
     for player in complaints.keys():
         if ctx.author.id in complaints[player]:
-            i += 1
+            complaint_count += 1
 
     channel = await ctx.author.create_dm()
-    await channel.send(f"Current # of complaints: {i}")
+    await channel.send(f"Current # of complaints: {complaint_count}")
 
 
 client.run(TOKEN)
