@@ -1119,6 +1119,10 @@ async def seasonstart(ctx):
         player[1] = 1000
         player[2] = 0
         player[3] = 0
+        user_dictionary[client.get_guild(SERVER_ID).get_member(player[0])].points = 1000
+        user_dictionary[client.get_guild(SERVER_ID).get_member(player[0])].display_rating = 1000
+        user_dictionary[client.get_guild(SERVER_ID).get_member(player[0])].wins = 0
+        user_dictionary[client.get_guild(SERVER_ID).get_member(player[0])].losses = 0
     user_pickle_out = open("user.pickle", "wb")
     pickle.dump(user_pickle_information, user_pickle_out)
     user_pickle_out.close()
@@ -1273,13 +1277,13 @@ async def resetpb(ctx):
 
 @client.command()
 async def complaints(ctx):
-    global complaints
+    global complaint_pickle_info
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
     complaint_count = 0
-    for player in complaints.keys():
-        if ctx.author.id in complaints[player]:
+    for player in complaint_pickle_info.keys():
+        if ctx.author.id in complaint_pickle_info[player]:
             complaint_count += 1
 
     channel = await ctx.author.create_dm()
