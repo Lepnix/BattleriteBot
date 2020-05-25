@@ -1162,6 +1162,7 @@ async def strikes(ctx):
 @client.command()
 async def complain(ctx, target, *, arg):
     global complaints
+    global complaint_pickle_info
     if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
         return
 
