@@ -38,9 +38,10 @@ user_dictionary = {}
 match_dictionary = {}
 match_counter = 0
 MAP_POOL = ['Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
-            'Meriko Summit - Night', 'Mount Araz - Day', 'Meriko Summit - Day', 'Blackstone Arena - Night',
-            'Orman Temple - Day', 'Orman Temple - Night', 'Sky Ring - Day', 'Sky Ring - Night', 'Dragon Garden - Day',
-            'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night', 'Great Market - Day']
+            'Meriko Summit - Night', 'Mount Araz - Day','Orman Temple - Night', 'Sky Ring - Night',
+            'Dragon Garden - Day', 'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night', 'Great Market - Day'
+            'Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
+            'Meriko Summit - Night']
 QUEUE_CHANNEL_ID = 712809382487785472
 MATCH_CHANNEL_ID = 712809411243933697
 MISC_COMMANDS_ID = 712809437034709133
@@ -129,7 +130,7 @@ class Match:
         self.team1_win_votes = 0
         self.team2_win_votes = 0
         self.drop_votes = 0
-        self.map = MAP_POOL[random.randint(0, 15)]
+        self.map = MAP_POOL[random.randint(0, 16)]
         self.closed = False
         purge_voters.clear()
         max = user_dictionary[self.draft_pool[0]].display_rating
@@ -1169,11 +1170,6 @@ async def complain(ctx, target, *, arg):
     if ctx.author not in user_dictionary.keys():
         channel = await ctx.author.create_dm()
         await channel.send("You are not registered.")
-        return
-
-    if ctx.author.id == 311749899614158848:
-        channel = await ctx.author.create_dm()
-        await channel.send("Kas, I can't in good conscience give you the ability to file complaints.")
         return
 
     target_player = client.get_guild(SERVER_ID).get_member_named(target)
