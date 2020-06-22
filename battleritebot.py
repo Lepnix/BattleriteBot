@@ -39,7 +39,7 @@ match_dictionary = {}
 match_counter = 0
 MAP_POOL = ['Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
             'Meriko Summit - Night', 'Mount Araz - Day','Orman Temple - Night', 'Sky Ring - Night',
-            'Dragon Garden - Day', 'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night', 'Great Market - Day'
+            'Dragon Garden - Day', 'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night', 'Great Market - Day',
             'Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
             'Meriko Summit - Night']
 QUEUE_CHANNEL_ID = 712809382487785472
