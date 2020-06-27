@@ -43,7 +43,7 @@ MAP_POOL = ['Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Nig
             'Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
             'Meriko Summit - Night']
 QUEUE_CHANNEL_ID = 712809382487785472
-MATCH_CHANNEL_ID = 7128094112439336978
+MATCH_CHANNEL_ID = 712809411243933697
 MISC_COMMANDS_ID = 712809437034709133
 DRAFT_CHANNEL_ID = 712809357988986980
 SERVER_ID = 712808385204060202
@@ -51,6 +51,7 @@ NAIL_CONTROL_ID = 712810025462136853
 NAIL_MEMBER_ID = 712809993673637930
 NAIL_TRIAL_ID = 712858389264334861
 DRAFT_BOT_ID = 709635454252613643
+BET_CHANNEL_ID = 724920921038782524
 BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
 purge_voters = []
 REQUIRED_VOTERS = 3
@@ -355,6 +356,8 @@ class RatedMatch:
         user_dictionary[self.captain2.id].is_captain2 = True
         self.team2_ordered.append(self.team2[0])
         self.team2_ordered.append(self.team2[1])
+        self.team1 = self.team1_ordered
+        self.team2 = self.team2_ordered
 
 
 
@@ -820,6 +823,26 @@ async def queue(ctx, action, role=None):
                             else:
                                 await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
                                                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
+
+                            channel = client.get_channel(BET_CHANNEL_ID)
+
+                            team1avg = (user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].id].points) / 3
+
+                            team2avg = (user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].id].points) / 3
+
+
+                            await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{team1avg},{team2avg},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].id}"
+                                               )
 
                             """
                             channel = await match_dictionary[match_counter].captain1.create_dm()
