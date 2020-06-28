@@ -476,7 +476,8 @@ def sortRankings():
     i = 0
     for dis_id in user_dictionary:
         if user_dictionary[dis_id].wins + user_dictionary[dis_id].losses > 9:
-            rankings.append([dis_id, user_dictionary[dis_id].display_rating, i + 1])
+            dis_name = client.get_guild(SERVER_ID).get_member(dis_id)
+            rankings.append([dis_name, user_dictionary[dis_id].display_rating, i + 1])
             i += 1
     rankings = sorted(rankings, key=operator.itemgetter(1), reverse=True)
     k = 0
@@ -1327,7 +1328,8 @@ async def winrates(ctx):
     for player in user_dictionary:
         if user_dictionary[player].losses > 0:
             if user_dictionary[player].wins / (user_dictionary[player].losses + user_dictionary[player].wins) < .4:
-                wr_message += f"{player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
+                wr_player = client.get_guild(SERVER_ID).get_member(player)
+                wr_message += f"{wr_player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
     await channel.send(f"```\n{wr_message}```")
 
 @client.command()
@@ -1579,14 +1581,14 @@ async def match(ctx, W1, W2, W3, L1, L2, L3):
         user_dictionary[player].wins += 1
         user_dictionary[player].points += team2_change
 
-    for player in team1():
+    for player in team1:
         if (user_dictionary[player].wins + user_dictionary[player].losses) <= 10:
-            user_dictionary[player.id].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
+            user_dictionary[player].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
         user_dictionary[player].display_rating = round(user_dictionary[player].points)
 
-    for player in team2():
+    for player in team2:
         if (user_dictionary[player].wins + user_dictionary[player].losses) <= 10:
-            user_dictionary[player.id].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
+            user_dictionary[player].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
         user_dictionary[player].display_rating = round(user_dictionary[player].points)
 
     user_pickle_information = []
