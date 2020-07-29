@@ -1809,12 +1809,16 @@ async def winrates(ctx):
         )
 
         for i in winrate_pickle_info[ctx.author.id]:
-            name = client.get_guild(SERVER_ID).get_member(i).name
-            player_field.append(f"{name}\n")
-            winrate_field.append(f"{round(winrate_pickle_info[ctx.author.id][i][0] / (winrate_pickle_info[ctx.author.id][i][0] + winrate_pickle_info[ctx.author.id][i][1]))}%\n")
+            if i != ctx.author.id:
+                name = client.get_guild(SERVER_ID).get_member(i).name
+                player_field.append(f"{name}\n")
+                winrate_field.append(f"{round(winrate_pickle_info[ctx.author.id][i][0] / (winrate_pickle_info[ctx.author.id][i][0] + winrate_pickle_info[ctx.author.id][i][1]))}%\n")
 
         winrate_embed.add_field(name='Players', value=player_field, inline=True)
         winrate_embed.add_field(name='Winrate %', value=winrate_field, inline=True)
         winrate_embed.set_author(name='Winrates')
+
+        channel = await ctx.author.create_dm()
+        await channel.send(embed=winrate_embed)
 
 client.run(TOKEN)
