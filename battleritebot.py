@@ -480,19 +480,16 @@ def sortRankings():
     i = 0
     for dis_id in user_dictionary:
         if user_dictionary[dis_id].wins + user_dictionary[dis_id].losses > 9:
-            dis_name = client.get_guild(SERVER_ID).get_member(dis_id)
-            rankings.append([dis_name, user_dictionary[dis_id].display_rating, i + 1])
-            i += 1
+            dis_name = client.get_user(dis_id)
+            if dis_name != None:
+                rankings.append([dis_name, user_dictionary[dis_id].display_rating, i + 1])
+                i += 1
     rankings = sorted(rankings, key=operator.itemgetter(1), reverse=True)
     k = 0
     while k < len(rankings):
         ranking_names.append(rankings[k][0])
-        k += 1
-    k = 0
-    while k < len(rankings):
         ranking_scores.append(rankings[k][1])
         k += 1
-
 
 def closeMatch(id, result):
     global user_dictionary
@@ -529,11 +526,11 @@ def closeMatch(id, result):
 
             if match_dictionary[id].team1[1].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team1[1].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][0] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team1[1].id][0] += 1
 
             if match_dictionary[id].team1[2].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team1[2].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][0] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team1[2].id][0] += 1
 
         for player in match_dictionary[id].team2:
             user_dictionary[player.id].losses += 1
@@ -548,11 +545,11 @@ def closeMatch(id, result):
 
             if match_dictionary[id].team2[1].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team2[1].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][1] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team2[1].id][1] += 1
 
             if match_dictionary[id].team2[2].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team2[2].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][1] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team2[2].id][1] += 1
 
 
     elif result == 2:   #team 2 wins
@@ -572,11 +569,11 @@ def closeMatch(id, result):
 
             if match_dictionary[id].team2[1].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team2[1].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][0] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team2[1].id][0] += 1
 
             if match_dictionary[id].team2[2].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team2[2].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][0] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team2[2].id][0] += 1
 
         for player in match_dictionary[id].team1:
             user_dictionary[player.id].losses += 1
@@ -591,11 +588,11 @@ def closeMatch(id, result):
 
             if match_dictionary[id].team1[1].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team1[1].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][1] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team1[1].id][1] += 1
 
             if match_dictionary[id].team1[2].id not in winrate_pickle_info[player.id]:
                 winrate_pickle_info[player.id][match_dictionary[id].team1[2].id] = [0, 0]
-            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][1] += 1
+            winrate_pickle_info[player.id][match_dictionary[id].team1[2].id][1] += 1
 
     for player in match_dictionary[id].players.keys():
         if (user_dictionary[player.id].wins + user_dictionary[player.id].losses) <= 10:
@@ -641,9 +638,9 @@ def matchAnalysis(info):
 
     for i in DRAFT_FORMAT:
         if i == 'b':
-            ban_count += 1
+            ban_count += 2
         if i == 'p':
-            pick_count += 1
+            pick_count += 2
 
     i = 1
     while i < ban_count:
@@ -651,6 +648,7 @@ def matchAnalysis(info):
         i += 1
     while i < (ban_count + pick_count):
         pick_list.append(info[i])
+        i += 1
 
     id = int(info[0])
 
@@ -664,15 +662,19 @@ def matchAnalysis(info):
         i = 0
         while i < 3:
             character_stats[pick_list[i]][2] += 1
+            i += 1
         while i < 6:
             character_stats[pick_list[i]][3] += 1
+            i += 1
 
     elif match_dictionary[id].team2_win_votes >= REQUIRED_VOTERS:
         i = 0
         while i < 3:
             character_stats[pick_list[i]][3] += 1
+            i += 1
         while i < 6:
             character_stats[pick_list[i]][2] += 1
+            i += 1
 
     character_stats['stat counter'] += 2
 
@@ -692,9 +694,9 @@ def matchPickBan(info):
 
     for i in DRAFT_FORMAT:
         if i == 'b':
-            ban_count += 1
+            ban_count += 2
         if i == 'p':
-            pick_count += 1
+            pick_count += 2
 
     i = 1
     while i < ban_count:
@@ -702,16 +704,8 @@ def matchPickBan(info):
         i += 1
     while i < (ban_count + pick_count):
         pick_list.append(info[i])
-    '''b1 = info[1]
-    b2 = info[2]
-    b3 = info[3]
-    b4 = info[4]
-    p1 = info[5]
-    p2 = info[6]
-    p3 = info[7]
-    p4 = info[8]
-    p5 = info[9]
-    p6 = info[10]'''
+        i += 1
+
 
     for i in ban_list:
         character_stats[i][0] += 1
@@ -838,8 +832,6 @@ async def on_message(ctx):
 
         if match_id in match_dictionary.keys():
             stats_cache.append(results)
-        else:
-            matchPickBan(results)
 
     def is_not_me(m):
         return m.author != client.user
@@ -936,7 +928,7 @@ async def queue(ctx, action, role=None):
                             """
                             if match_dictionary[match_counter].first_pick == 1:
                                 channel = await match_dictionary[match_counter].captain1.create_dm()
-                                await channel.send(f"You are Captain 1. You will draft first. {match_dictionary[match_counter].captain2} is the second captain. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                                await channel.send(f"You are Captain 1. You will draft first. `{match_dictionary[match_counter].captain2.name}` is Captain 2. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
                                                    f"```1 - {match_dictionary[match_counter].draft_pool[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[0]]}\n"
                                                    f"2 - {match_dictionary[match_counter].draft_pool[1].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[1]]}\n"
                                                    f"3 - {match_dictionary[match_counter].draft_pool[2].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[2]]}\n"
@@ -947,22 +939,22 @@ async def queue(ctx, action, role=None):
                                                    f"{match_dictionary[match_counter].team2[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team2[0]]}```\n")
 
                                 channel = await match_dictionary[match_counter].captain2.create_dm()
-                                await channel.send(f"You are Captain 2. You will draft second. {match_dictionary[match_counter].captain1} is the first captain.")
+                                await channel.send(f"You are Captain 2. You will draft second. `{match_dictionary[match_counter].captain1.name}` is Captain 1.")
 
                             if match_dictionary[match_counter].first_pick == 2:
                                 channel = await match_dictionary[match_counter].captain1.create_dm()
-                                await channel.send(f"You are Captain 1. You will draft second. {match_dictionary[match_counter].captain2} is the second captain.\n"
-                                                   f"```1 - {match_dictionary[match_counter].draft_pool[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[0]]}\n"
-                                                   f"2 - {match_dictionary[match_counter].draft_pool[1].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[1]]}\n"
-                                                   f"3 - {match_dictionary[match_counter].draft_pool[2].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[2]]}\n"
-                                                   f"4 - {match_dictionary[match_counter].draft_pool[3].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[3]]}\n\n"
-                                                   f"Team 1\n"
-                                                   f"{match_dictionary[match_counter].team1[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team1[0]]}\n\n"
-                                                   f"Team 2\n"
-                                                   f"{match_dictionary[match_counter].team2[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team2[0]]}```\n")
+                                await channel.send(f"You are Captain 1. You will draft second. `{match_dictionary[match_counter].captain2.name}` is Captain 2.\n")
 
                                 channel = await match_dictionary[match_counter].captain2.create_dm()
-                                await channel.send(f"You are Captain 2. You will draft first. {match_dictionary[match_counter].captain1} is the first captain. To draft a player, look at the number next to the player's name and type `!draft <#>`")
+                                await channel.send(f"You are Captain 2. You will draft first. `{match_dictionary[match_counter].captain1.name}` is Captain 1. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                                f"```1 - {match_dictionary[match_counter].draft_pool[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[0]]}\n"
+                                f"2 - {match_dictionary[match_counter].draft_pool[1].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[1]]}\n"
+                                f"3 - {match_dictionary[match_counter].draft_pool[2].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[2]]}\n"
+                                f"4 - {match_dictionary[match_counter].draft_pool[3].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[3]]}\n\n"
+                                f"Team 1\n"
+                                f"{match_dictionary[match_counter].team1[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team1[0]]}\n\n"
+                                f"Team 2\n"
+                                f"{match_dictionary[match_counter].team2[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team2[0]]}```\n")
 
                             for player in match_dictionary[match_counter].draft_pool:
                                 channel = await player.create_dm()
@@ -1118,13 +1110,6 @@ async def draft(ctx, arg):
                 channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
                 await channel.send(embed=match_embed)
                 channel = client.get_channel(DRAFT_CHANNEL_ID)
-                if len(banned_champs) == 3:
-                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
-                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
-                else:
-                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
-                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
-                channel = client.get_channel(DRAFT_CHANNEL_ID)
                 await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
                                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{DRAFT_FORMAT}")
             elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 2:
@@ -1143,10 +1128,10 @@ async def draft(ctx, arg):
                     f"2 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1]]}\n"
                     f"3 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2]]}\n\n"
                     f"Team 1\n"
-                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n\n"
                     f"Team 2\n"
-                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}```\n"
-                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1]]}\n\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1]]}```\n\n"
                 )
             elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 4:
                 await ctx.channel.send("It is not your turn to pick.")
@@ -1171,7 +1156,7 @@ async def draft(ctx, arg):
                 match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))
                 channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
                 await channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].name}`.")
-                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(0))
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(0))
                 channel = client.get_channel(MATCH_CHANNEL_ID)
                 await channel.send(f"A new match has been created.\n {match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].mention} "
                                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].mention} "
@@ -1187,13 +1172,7 @@ async def draft(ctx, arg):
                 await channel.send(embed=match_embed)
                 channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
                 await channel.send(embed=match_embed)
-                channel = client.get_channel(DRAFT_CHANNEL_ID)
-                if len(banned_champs) == 3:
-                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
-                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
-                else:
-                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
-                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
+
                 channel = client.get_channel(DRAFT_CHANNEL_ID)
                 await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
                                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{DRAFT_FORMAT}")
@@ -1362,7 +1341,7 @@ async def leaderboard(ctx):
         lb_embed.set_author(name="Leaderboard")
         await channel.send(embed=lb_embed)
     else:
-        await channel.send("There are not enough players who have placed to create a leaderboard. Try again later.")
+        await channel.send("There are not enough player s who have placed to create a leaderboard. Try again later.")
     if ctx.author in ranking_names:
         if ranking_names.index(ctx.author) > 9:
             embed = discord.Embed(
@@ -1510,8 +1489,9 @@ async def showwinrates(ctx):
     for player in user_dictionary:
         if user_dictionary[player].losses > 0:
             if user_dictionary[player].wins / (user_dictionary[player].losses + user_dictionary[player].wins) < .4:
-                wr_player = client.get_guild(SERVER_ID).get_member(player)
-                wr_message += f"{wr_player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
+                wr_player = client.get_user(player)
+                if wr_player != None:
+                    wr_message += f"{wr_player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
     await channel.send(f"```\n{wr_message}```")
 
 @client.command()
@@ -1768,7 +1748,7 @@ async def match(ctx, W1, W2, W3, L1, L2, L3):
         user_dictionary[player].wins += 1
         user_dictionary[player].points += team1_change
     for player in team2:
-        user_dictionary[player].wins += 1
+        user_dictionary[player].losses += 1
         user_dictionary[player].points += team2_change
 
     for player in team1:
@@ -1810,9 +1790,10 @@ async def winrates(ctx):
 
         for i in winrate_pickle_info[ctx.author.id]:
             if i != ctx.author.id:
-                name = client.get_guild(SERVER_ID).get_member(i).name
-                player_field.append(f"{name}\n")
-                winrate_field.append(f"{round(winrate_pickle_info[ctx.author.id][i][0] / (winrate_pickle_info[ctx.author.id][i][0] + winrate_pickle_info[ctx.author.id][i][1]))}%\n")
+                if client.get_guild(SERVER_ID).get_member(i) is not None:
+                    name = client.get_guild(SERVER_ID).get_member(i).name
+                player_field += f"{name}\n"
+                winrate_field += f"{round((winrate_pickle_info[ctx.author.id][i][0] / (winrate_pickle_info[ctx.author.id][i][0] + winrate_pickle_info[ctx.author.id][i][1]))*100)}%\n"
 
         winrate_embed.add_field(name='Players', value=player_field, inline=True)
         winrate_embed.add_field(name='Winrate %', value=winrate_field, inline=True)
@@ -1820,5 +1801,30 @@ async def winrates(ctx):
 
         channel = await ctx.author.create_dm()
         await channel.send(embed=winrate_embed)
+
+@client.command(aliases=["rwr"])
+async def resetwinrates(ctx):
+    global winrate_pickle_info
+
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    winrate_pickle_info = {}
+    winrate_pickle_out = open("winrate.pickle", "wb")
+    pickle.dump(winrate_pickle_info, winrate_pickle_out)
+    winrate_pickle_out.close()
+
+
+
+@client.command(aliases=["pwp"])
+async def printwinratepickle(ctx):
+    global winrate_pickle_info
+    print(winrate_pickle_info)
+
 
 client.run(TOKEN)
