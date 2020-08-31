@@ -1341,7 +1341,7 @@ async def leaderboard(ctx):
         lb_embed.set_author(name="Leaderboard")
         await channel.send(embed=lb_embed)
     else:
-        await channel.send("There are not enough player s who have placed to create a leaderboard. Try again later.")
+        await channel.send("There are not enough players who have placed to create a leaderboard. Try again later.")
     if ctx.author in ranking_names:
         if ranking_names.index(ctx.author) > 9:
             embed = discord.Embed(
