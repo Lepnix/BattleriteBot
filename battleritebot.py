@@ -1,2036 +1,1824 @@
 from discord.ext import commands
 from discord import *
 import discord
+import operator
 import random
+import dill as pickle
 import discord.member
-
-DEFAULT_BEST_OF = 3
-
-MAP_POOL_ONE = ["Blackstone Arena - Day", "Dragon Garden - Night", "Meriko Summit - Night", "Mount Araz - Night",
-                "Orman Temple - Night"]
-MAP_POOL_THREE = ["Blackstone Arena - Day", "Daharin Battlegrounds - Night", "Dragon Garden - Night",
-                  "Great Market - Night", "Meriko Summit - Night", "Mount Araz - Night", "Orman Temple - Night"]
-
-MAP_ALIASES = {"blackstone arena - day": "Blackstone Arena - Day",
-               "blackstone arena day": "Blackstone Arena - Day",
-               "blackstone arena": "Blackstone Arena - Day",
-               "blackstone day": "Blackstone Arena - Day",
-               "blackstone": "Blackstone Arena - Day",
-               "black day": "Blackstone Arena - Day",
-               "black": "Blackstone Arena - Day",
-
-               "daharin battlegrounds - night": "Daharin Battlegrounds - Night",
-               "daharin battlegrounds": "Daharin Battlegrounds - Night",
-               "daharin night": "Daharin Battlegrounds - Night",
-               "daharin": "Daharin Battlegrounds - Night",
-
-               "dragon garden - night": "Dragon Garden - Night",
-               "dragon garden night": "Dragon Garden - Night",
-               "dragon garden": "Dragon Garden - Night",
-               "dragon night": "Dragon Garden - Night",
-               "dragon": "Dragon Garden - Night",
-
-               "great market - night": "Great Market - Night",
-               "great market": "Great Market - Night",
-               "market night": "Great Market - Night",
-               "market": "Great Market - Night",
-
-               "meriko summit - night": "Meriko Summit - Night",
-               "meriko summit": "Meriko Summit - Night",
-               "meriko night": "Meriko Summit - Night",
-               "meriko": "Meriko Summit - Night",
-
-               "mount araz - night": "Mount Araz - Night",
-               "araz night": "Mount Araz - Night",
-               "mount araz": "Mount Araz - Night",
-               "araz": "Mount Araz - Night",
-
-               "orman temple - night": "Orman Temple - Night",
-               "orman temple": "Orman Temple - Night",
-               "orman night": "Orman Temple - Night",
-               "orman": "Orman Temple - Night"}
-
-CHAMP_ALIASES = {
-    "alysia": "Alysia",
-    "aly": "Alysia",
-    "ashka": "Ashka",
-    "ash": "Ashka",
-    "bakko": "Bakko",
-    "blossom": "Blossom",
-    "bloss": "Blossom",
-    "blos": "Blossom",
-    "croak": "Croak",
-    "destiny": "Destiny",
-    "dest": "Destiny",
-    "ezmo": "Ezmo",
-    "freya": "Freya",
-    "iva": "Iva",
-    "jade": "Jade",
-    "jamila": "Jamila",
-    "jam": "Jamila",
-    "jumong": "Jumong",
-    "ju": "Jumong",
-    "lucie": "Lucie",
-    "luc": "Lucie",
-    "oldur": "Oldur",
-    "pearl": "Pearl",
-    "pestilus": "Pestilus",
-    "pest": "Pestilus",
-    "poloma": "Poloma",
-    "polo": "Poloma",
-    "raigon": "Raigon",
-    "rai": "Raigon",
-    "rook": "Rook",
-    "ruh kaan": "Ruh Kaan",
-    "ruh": "Ruh Kaan",
-    "ru": "Ruh Kaan",
-    "rk": "Ruh Kaan",
-    "shen rao": "Shen Rao",
-    "shen": "Shen Rao",
-    "shifu": "Shifu",
-    "sirius": "Sirius",
-    "taya": "Taya",
-    "thorn": "Thorn",
-    "ulric": "Ulric",
-    "varesh": "Varesh",
-    "var": "Varesh",
-    "zander": "Zander",
-    "zan": "Zander",
-}
-
-CHAMP_ROLES = {
-    "Alysia": 'r',
-    "Ashka": 'r',
-    "Bakko": 'm',
-    "Blossom": 's',
-    "Croak": 'm',
-    "Destiny": 'r',
-    "Ezmo": 'r',
-    "Freya": 'm',
-    "Iva": 'r',
-    "Jade": 'r',
-    "Jamila": 'm',
-    "Jumong": 'r',
-    "Lucie": 's',
-    "Oldur": 's',
-    "Pearl": 's',
-    "Pestilus": 's',
-    "Poloma": 's',
-    "Raigon": 'm',
-    "Rook": 'm',
-    "Ruh Kaan": 'm',
-    "Shen Rao": 'r',
-    "Shifu": 'm',
-    "Sirius": 's',
-    "Taya": 'r',
-    "Thorn": 'm',
-    "Ulric": 's',
-    "Varesh": 'r',
-    "Zander": 's',
-}
-
-BANNED_1v1 = [
-    "Blossom",
-    "Lucie",
-    "Oldur",
-    "Pearl",
-    "Pestilus",
-    "Poloma",
-    "Shen Rao",
-    "Sirius",
-    "Ulric",
-    "Zander"
-]
-
-SERVER_ID = 744406275864920085
-DRAFT_CHANNEL_ID = 751593893824299049
-
-active_captains = {}
-match_dict = {}
+from elo import rate_1vs1
 
 client = commands.Bot(command_prefix='!')
 client.remove_command('help')
 TOKEN = open('token.secret', 'r').read()
 
+BUILDS = {'freya': 'r2, y2, gS, yE, gE', 'ashka': 'r2, y2, rQ, rR, rP', 'croak': 'g2, b2, yQ, yE, pE',
+          'bakko': 'p2, yQ, tS, rE, yE', 'jamila': 'p2, rS, yE, pE, pR', 'raigon': 'tS, gS, tQ, rQ, bR',
+          'rook': 't2, rE, rS, yS, gQ', 'ruh kaan': 'g1, p1, wS, wE, rE', 'rk': 'g1, p1, wS, wE, rE',
+          'shifu': 'p2, rS, rQ, gQ, rR', 'thorn': 'r1, gS, pE, rE, wR', 'alysia': 'p2, tQ, rQ, tE, rR',
+          'destiny': 'g1, rS, yS, yE, pR', 'ezmo': "p2, b2, rS', rS'', bE", 'iva': "r2', yQ, pE, bE, pR",
+          'jade': 'b1, r2, p2, bS, rQ', 'jumong': 'p2, pE, rQ, pQ, yR', 'shen rao': 'b2, tS, bQ, yE, yR',
+          'shen': 'b2, tS, bQ, yE, yR', 'taya': 'p1, g1, y2, yQ, yE', 'varesh': 'g1, r2, p2, pS, bE',
+          'blossom': 't1, t2, yS, yQ, pE', 'lucie': 'g1, t2, r2, yS, wQ', 'oldur': 'w1, b1, t2, tS, yQ',
+          'pearl': 'r1, p1, t2, pQ, tE', 'pestilus': 'tQ, pQ, pE, rE, wR', 'pest': 'tQ, pQ, pE, rE, wR',
+          'poloma': 't1, tS, pE, rE, tR', 'sirius': 't1, g2, yS, bE, rR', 'ulric': 'r1, w1, yS, pE, yR',
+          'zander': 't1, b2, p2, wS, bS'}
 
-class MatchState:
-    def __init__(self, match_id, match_format, captain1, best_of, map_pool):
-        self.match_id = match_id
-        self.first_ban = random.randint(1, 2)
-        self.current_game = 0
-        self.champ_stage = 0
-        self.match_format = match_format
-        self.map_pool = map_pool
-        self.best_of = best_of
-        self.wins_needed = (best_of + 1) / 2
-        self.captain1_wins = 0
-        self.captain2_wins = 0
-        self.captain1 = captain1
-        self.captain2 = None
-        self.active_captain = None
-        self.inactive_captain = None
-        self.map_embed = None
-        self.cap1_champ_embed = None
-        self.cap2_champ_embed = None
-        self.channel_embed = None
-        self.channel_embed_message = None
-        self.cap1_1v1_embed = None
-        self.cap2_1v1_embed = None
-        self.cap1_1v1_champ = None
-        self.cap2_1v1_champ = None
-        self.active_map_message = None
-        self.active_map_message_2 = None
-        self.inactive_map_message = None
-        self.inactive_map_message_2 = None
-        self.cap1_champ_message = None
-        self.cap1_champ_message_2 = None
-        self.cap2_champ_message = None
-        self.cap2_champ_message_2 = None
-        # map_drafts format: [[[remaining_maps], [banned_maps]], [[remaining_maps], [banned_maps]]]
-        self.map_drafts = []
-        # champ_drafts format: [[[[cap1_reserve], [cap1_picks], [cap1_bans]],
-        # [[cap2_reserve], [cap2_picks], [cap2_bans]]],...]
-        self.champ_drafts = []
-        self.current_draft = None
-        self.map_drafts.append([map_pool, []])
-        self.last_game_result = [9, 9]
-        self.show_both_1v1 = False
-        self.bans_1v1 = [None, None]
+character_stats = {'freya': [0, 0, 0, 0, 0], 'ashka': [0, 0, 0, 0, 0], 'croak': [0, 0, 0, 0, 0], 'bakko': [0, 0, 0, 0, 0],
+                   'jamila': [0, 0, 0, 0, 0], 'raigon': [0, 0, 0, 0, 0], 'rook': [0, 0, 0, 0, 0], 'ruh kaan': [0, 0, 0, 0, 0],
+                   'shifu': [0, 0, 0, 0, 0], 'thorn': [0, 0, 0, 0, 0], 'alysia': [0, 0, 0, 0, 0], 'destiny': [0, 0, 0, 0, 0],
+                   'ezmo': [0, 0, 0, 0, 0], 'iva': [0, 0, 0, 0, 0], 'jade': [0, 0, 0, 0, 0], 'jumong': [0, 0, 0, 0, 0],
+                   'shen rao': [0, 0, 0, 0, 0], 'taya': [0, 0, 0, 0, 0], 'varesh': [0, 0, 0, 0, 0], 'blossom': [0, 0, 0, 0, 0],
+                   'lucie': [0, 0, 0, 0, 0], 'oldur': [0, 0, 0, 0, 0], 'pearl': [0, 0, 0, 0, 0], 'pestilus': [0, 0, 0, 0, 0],
+                   'poloma': [0, 0, 0, 0, 0], 'sirius': [0, 0, 0, 0, 0], 'ulric': [0, 0, 0, 0, 0], 'zander': [0, 0, 0, 0, 0],
+                   'stat counter': 0}
 
-    def update_map_embed(self):
-        self.map_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
+stats_cache = []
+queue_channel = []
+user_dictionary = {}
+match_dictionary = {}
+match_counter = 0
+MAP_POOL = ['Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
+            'Meriko Summit - Night', 'Mount Araz - Day', 'Orman Temple - Night', 'Sky Ring - Night',
+            'Dragon Garden - Day', 'Daharin Battlegrounds - Day', 'Daharin Battlegrounds - Night',
+            'Mount Araz - Night', 'Blackstone Arena - Day', 'Dragon Garden - Night', 'Great Market - Night',
+            'Meriko Summit - Night']
+QUEUE_CHANNEL_ID = 737652498944229376
+MATCH_CHANNEL_ID = 737652538769145897
+MISC_COMMANDS_ID = 737652559883534406
+DRAFT_CHANNEL_ID = 737652616422621206
+SERVER_ID = 737652264281571358
+NAIL_CONTROL_ID = 737658257400791071
+NAIL_MEMBER_ID = 737655312651124876
+NAIL_TRIAL_ID = 737655336298610789
+DRAFT_BOT_ID = 721476183727931392
+BET_CHANNEL_ID = 737658455162093579
+DRAFT_FORMAT = "bbppbp"
+BOT_CHANNELS = [QUEUE_CHANNEL_ID, MATCH_CHANNEL_ID, MISC_COMMANDS_ID]
+purge_voters = []
+REQUIRED_VOTERS = 3
+queue_table_data = [['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', '']]
+queue_table_message = 0
+rankings = []
+ranking_names = []
+ranking_scores = []
+user_pickle_information = []
+banned_champs = []
+banned_players = []
+complaints = {}
+complaint_pickle_info = {}
+winrate_pickle_info = {}
 
-        map_pool_field = ''
-        ban_field = ''
 
-        for i in self.map_drafts[-1][0]:
-            map_pool_field += f"{i}\n"
-        map_pool_field.rstrip("\n")
+queue_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+)
 
-        for i in self.map_drafts[-1][1]:
-            ban_field += f"{i}\n"
-        ban_field.rstrip("\n")
+queue_embed.add_field(name='Fill', value='---', inline=False)
+queue_embed.add_field(name='DPS', value='---', inline=False)
+queue_embed.add_field(name='Support', value='---', inline=False)
 
-        if len(self.map_drafts[-1][1]) == 0:
-            ban_field = '\u200b'
+match_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+)
 
-        self.map_embed.add_field(name='Map Pool', value=map_pool_field, inline=False)
-        self.map_embed.add_field(name='Banned Maps', value=ban_field, inline=False)
 
-    def update_champ_embed(self):
-        self.cap1_champ_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
+field_value_1 = ''
+field_value_2 = ''
+field_value_3 = ''
 
-        self.cap2_champ_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
 
-        self.channel_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
+class User:
+    def __init__(self):
+        self.points = 1000
+        self.display_rating = round(self.points)
+        self.wins = 0
+        self.losses = 0
+        self.strikes = 0
+        self.in_match = False
+        self.is_captain1 = False
+        self.is_captain2 = False
+        self.last_match_id = 0
+        self.reported = False
+        self.dropped = False
 
-        label_field = "Reserve\n\nPicks\n\n\n\nBans"
 
-        cap1_field = f"{self.champ_drafts[-1][0][0][0]}\n\n"\
-            f"{self.champ_drafts[-1][0][1][0]}\n{self.champ_drafts[-1][0][1][1]}\n{self.champ_drafts[-1][0][1][2]}\n\n"\
-            f"{self.champ_drafts[-1][0][2][0]}\n{self.champ_drafts[-1][0][2][1]}\n{self.champ_drafts[-1][0][2][2]}"
+class Match:
+    def __init__(self):
+        global queue_channel
+        global purge_voters
+        global match_counter
+        global user_dictionary
+        self.first_pick = random.randint(1, 2)
+        self.players = {}
+        self.support_counter = 0
+        for player in queue_channel:
+            if len(self.players) < 6:
+                if player[1] == 'Fill' or player[1] == 'DPS':
+                    self.players[player[0]] = player[1]
+                elif self.support_counter < 2:
+                    self.players[player[0]] = player[1]
+                    self.support_counter += 1
+        for player in self.players:
+            if player in [item[0] for item in queue_channel]:
+                del queue_channel[[item[0] for item in queue_channel].index(player)]
+        self.draft_pool = list(self.players.keys())
+        self.team1 = []
+        self.team2 = []
+        self.match_id = match_counter
+        self.team1_win_votes = 0
+        self.team2_win_votes = 0
+        self.drop_votes = 0
+        self.map = MAP_POOL[random.randint(0, 15)]
+        self.closed = False
+        purge_voters.clear()
+        max = user_dictionary[self.draft_pool[0].id].display_rating
+        self.captain1 = self.draft_pool[0]
+        for player in self.draft_pool:     #finds highest and second highest rated players, makes them captain1 and captain2, and removes them from pool
+            user_dictionary[player.id].in_match = True  #sets inmatch to true for each player in the game
+            user_dictionary[player.id].last_match_id = self.match_id
+            if user_dictionary[player.id].display_rating > max:
+                self.captain1 = player
+                max = user_dictionary[player.id].display_rating
+        self.team1.append(self.captain1)
+        user_dictionary[self.captain1.id].is_captain1 = True
+        self.draft_pool.remove(self.captain1)
+        max = user_dictionary[self.draft_pool[0].id].display_rating
+        self.captain2 = self.draft_pool[0]
+        for player in self.draft_pool:
+            if user_dictionary[player.id].display_rating > max:
+                self.captain2 = player
+                max = user_dictionary[player.id].display_rating
+        self.team2.append(self.captain2)
+        user_dictionary[self.captain2.id].is_captain2 = True
+        self.draft_pool.remove(self.captain2)
 
-        cap2_field = f"{self.champ_drafts[-1][1][0][0]}\n\n"\
-            f"{self.champ_drafts[-1][1][1][0]}\n{self.champ_drafts[-1][1][1][1]}\n{self.champ_drafts[-1][1][1][2]}\n\n"\
-            f"{self.champ_drafts[-1][1][2][0]}\n{self.champ_drafts[-1][1][2][1]}\n{self.champ_drafts[-1][1][2][2]}"
 
-        self.cap1_champ_embed.add_field(name='Captains', value=label_field)
-        self.cap1_champ_embed.add_field(name='You', value=cap1_field)
-        self.cap1_champ_embed.add_field(name=f'{self.captain2.name}', value=cap2_field)
+class RatedMatch:
+    def __init__(self):
+        global queue_channel
+        global purge_voters
+        global match_counter
+        global user_dictionary
+        self.players = {}
+        self.support_counter = 0
+        for player in queue_channel:
+            if len(self.players) < 6:
+                if player[1] == 'Fill' or player[1] == 'DPS':
+                    self.players[player[0]] = player[1]
+                elif self.support_counter < 2:
+                    self.players[player[0]] = player[1]
+                    self.support_counter += 1
+        for player in self.players:
+            if player in [item[0] for item in queue_channel]:
+                del queue_channel[[item[0] for item in queue_channel].index(player)]
+        self.draft_pool = list(self.players.keys())
+        self.team1 = []
+        self.team2 = []
+        self.team1_ordered = []
+        self.team2_ordered = []
+        self.match_id = match_counter
+        self.team1_win_votes = 0
+        self.team2_win_votes = 0
+        self.drop_votes = 0
+        self.map = MAP_POOL[random.randint(0, 15)]
+        self.closed = False
+        purge_voters.clear()
 
-        self.cap2_champ_embed.add_field(name='Captains', value=label_field)
-        self.cap2_champ_embed.add_field(name='You', value=cap2_field)
-        self.cap2_champ_embed.add_field(name=f'{self.captain1.name}', value=cap1_field)
+        elo_diff = [999, 999, 999, 999, 999, 999, 999, 999, 999, 999]
 
-        self.channel_embed.add_field(name='Captains', value=label_field)
-        self.channel_embed.add_field(name=f'{self.captain1.name}', value=cap1_field)
-        self.channel_embed.add_field(name=f'{self.captain2.name}', value=cap2_field)
+        elo_diff[0] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[2].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
 
-    def update_1v1_embed(self):
-        self.cap1_1v1_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[0] = 999
 
-        self.cap2_1v1_embed = discord.Embed(
-            title=None,
-            description=None,
-            color=discord.Color.magenta()
-        )
+        elo_diff[1] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[3].id].points) -
+                          (user_dictionary[self.draft_pool[2].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
 
-        cap1_field = '\u200b'
-        for i in self.champ_drafts[-1][0]:
-            if i != self.bans_1v1[1]:
-                cap1_field += f"{i}\n"
-        cap1_field.rstrip("\n")
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[3]] == 'DPS')
+            or (self.players[self.draft_pool[2]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[1] = 999
 
-        cap2_field = '\u200b'
-        for i in self.champ_drafts[-1][1]:
-            if i != self.bans_1v1[0]:
-                cap2_field += f"{i}\n"
-        cap2_field.rstrip("\n")
+        elo_diff[2] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[4].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[2].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
 
-        self.cap1_1v1_embed.add_field(name="You", value=cap1_field)
-        self.cap2_1v1_embed.add_field(name="You", value=cap2_field)
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[2] = 999
 
-        '''
-        if self.show_both_1v1:
-            self.cap1_1v1_embed.add_field(name=self.captain2.name, value=cap2_field)
-            self.cap2_1v1_embed.add_field(name=self.captain1.name, value=cap1_field)
-        '''
+        elo_diff[3] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[5].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[2].id].points))
 
-        self.cap1_1v1_embed.add_field(name=self.captain2.name, value=cap2_field)
-        self.cap2_1v1_embed.add_field(name=self.captain1.name, value=cap1_field)
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')):
+            elo_diff[3] = 999
+
+        elo_diff[4] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[3].id].points
+                           + user_dictionary[self.draft_pool[2].id].points) -
+                          (user_dictionary[self.draft_pool[1].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')
+            or (self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[4] = 999
+
+        elo_diff[5] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[2].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[5] = 999
+
+        elo_diff[6] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[5].id].points
+                           + user_dictionary[self.draft_pool[2].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[1].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS')):
+            elo_diff[6] = 999
+
+        elo_diff[7] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[3].id].points
+                           + user_dictionary[self.draft_pool[4].id].points) -
+                          (user_dictionary[self.draft_pool[1].id].points + user_dictionary[self.draft_pool[2].id].points
+                           + user_dictionary[self.draft_pool[5].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS')
+            or (self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')):
+            elo_diff[7] = 999
+
+        elo_diff[8] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[5].id].points) -
+                          (user_dictionary[self.draft_pool[3].id].points + user_dictionary[self.draft_pool[1].id].points
+                           + user_dictionary[self.draft_pool[2].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')
+            or (self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')):
+            elo_diff[8] = 999
+
+        elo_diff[9] = abs((user_dictionary[self.draft_pool[0].id].points + user_dictionary[self.draft_pool[3].id].points
+                           + user_dictionary[self.draft_pool[5].id].points) -
+                          (user_dictionary[self.draft_pool[1].id].points + user_dictionary[self.draft_pool[4].id].points
+                           + user_dictionary[self.draft_pool[2].id].points))
+
+        if ((self.players[self.draft_pool[0]] == 'DPS' and self.players[self.draft_pool[3]] == 'DPS' and self.players[self.draft_pool[5]] == 'DPS')
+            or (self.players[self.draft_pool[1]] == 'DPS' and self.players[self.draft_pool[4]] == 'DPS' and self.players[self.draft_pool[2]] == 'DPS')):
+            elo_diff[9] = 999
+
+        optimal_teams = []
+
+        min = 999
+        for i in range(10):
+            if elo_diff[i] < min:
+                min = elo_diff[i]
+                optimal_teams.clear()
+                optimal_teams.append(i)
+            elif elo_diff[i] == min:
+                optimal_teams.append(i)
+
+        team_pairing_index = optimal_teams[random.randint(0, len(optimal_teams)-1)]
+
+        if team_pairing_index == 0:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[1], self.draft_pool[2]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[4], self.draft_pool[5]])
+
+        if team_pairing_index == 1:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[1], self.draft_pool[3]])
+            self.team2.extend([self.draft_pool[2], self.draft_pool[4], self.draft_pool[5]])
+
+        if team_pairing_index == 2:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[1], self.draft_pool[4]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[2], self.draft_pool[5]])
+
+        if team_pairing_index == 3:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[1], self.draft_pool[5]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[4], self.draft_pool[2]])
+
+        if team_pairing_index == 4:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[3], self.draft_pool[2]])
+            self.team2.extend([self.draft_pool[1], self.draft_pool[4], self.draft_pool[5]])
+
+        if team_pairing_index == 5:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[4], self.draft_pool[2]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[1], self.draft_pool[5]])
+
+        if team_pairing_index == 6:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[5], self.draft_pool[2]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[4], self.draft_pool[1]])
+
+        if team_pairing_index == 7:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[3], self.draft_pool[4]])
+            self.team2.extend([self.draft_pool[1], self.draft_pool[2], self.draft_pool[5]])
+
+        if team_pairing_index == 8:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[4], self.draft_pool[5]])
+            self.team2.extend([self.draft_pool[3], self.draft_pool[1], self.draft_pool[2]])
+
+        if team_pairing_index == 9:
+            self.team1.extend([self.draft_pool[0], self.draft_pool[3], self.draft_pool[5]])
+            self.team2.extend([self.draft_pool[1], self.draft_pool[4], self.draft_pool[2]])
+
+        for player in self.draft_pool:
+            user_dictionary[player.id].in_match = True  #sets inmatch to true for each player in the game
+            user_dictionary[player.id].last_match_id = self.match_id
+
+        max = user_dictionary[self.team1[0].id].points
+        self.captain1 = self.team1[0]
+        for player in self.team1:
+            if user_dictionary[player.id].points > max:
+                self.captain1 = player
+                max = user_dictionary[player.id].points
+        self.team1_ordered.append(self.captain1)
+        self.team1.remove(self.captain1)
+        user_dictionary[self.captain1.id].is_captain1 = True
+        self.team1_ordered.append(self.team1[0])
+        self.team1_ordered.append(self.team1[1])
+
+        max = user_dictionary[self.team2[0].id].points
+        self.captain2 = self.team2[0]
+        for player in self.team2:
+            if user_dictionary[player.id].points > max:
+                self.captain2 = player
+                max = user_dictionary[player.id].points
+        self.team2_ordered.append(self.captain2)
+        self.team2.remove(self.captain2)
+        user_dictionary[self.captain2.id].is_captain2 = True
+        self.team2_ordered.append(self.team2[0])
+        self.team2_ordered.append(self.team2[1])
+        self.team1 = self.team1_ordered
+        self.team2 = self.team2_ordered
+
+
+
+def updateQueueTableData():
+    global queue_channel
+    global queue_table_data
+    f = 0
+    d = 0
+    s = 0
+    queue_table_data = [['', '', '', '', '', ''], ['', '', '', '', '', ''], ['', '', '', '', '', '']]
+    for person in queue_channel:
+        if person[1] == 'Fill':
+            queue_table_data[0][f] = person[0].name
+            f += 1
+        if person[1] == 'DPS':
+            queue_table_data[1][d] = person[0].name
+            d += 1
+        if person[1] == 'Support':
+            queue_table_data[2][s] = person[0].name
+            s += 1
+
+
+def updateQueueEmbed():
+    global queue_embed
+    global queue_table_data
+    global field_value_1
+    global field_value_2
+    global field_value_3
+
+    updated_queue_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+)
+
+
+    field_value_1 = ''
+    field_value_2 = ''
+    field_value_3 = ''
+
+    for i in queue_table_data[0]:
+        if i == '':
+            field_value_1 += '---\n'
+            break
+        else:
+            field_value_1 += f'{i}\n'
+
+    for i in queue_table_data[1]:
+        if i == '':
+            field_value_2 += '---\n'
+            break
+        else:
+            field_value_2 += f'{i}\n'
+
+    for i in queue_table_data[2]:
+        if i == '':
+            field_value_3 += '---\n'
+            break
+        else:
+            field_value_3 += f'{i}\n'
+
+    updated_queue_embed.add_field(name='Fill', value=field_value_1, inline=False)
+    updated_queue_embed.add_field(name='DPS', value=field_value_2, inline=False)
+    updated_queue_embed.add_field(name='Support', value=field_value_3, inline=False)
+
+    queue_embed = updated_queue_embed
+
+
+def createMatchEmbed(id):
+    global match_embed
+    global user_dictionary
+    global match_dictionary
+    updated_match_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+    )
+
+    team1 = f"{match_dictionary[id].team1[0].name} - {match_dictionary[id].players[match_dictionary[id].team1[0]]}" \
+        f"\n{match_dictionary[id].team1[1].name} - {match_dictionary[id].players[match_dictionary[id].team1[1]]}" \
+        f"\n{match_dictionary[id].team1[2].name} - {match_dictionary[id].players[match_dictionary[id].team1[2]]}"
+    team2 = f"{match_dictionary[id].team2[0].name} - {match_dictionary[id].players[match_dictionary[id].team2[0]]}" \
+        f"\n{match_dictionary[id].team2[1].name} - {match_dictionary[id].players[match_dictionary[id].team2[1]]}" \
+        f"\n{match_dictionary[id].team2[2].name} - {match_dictionary[id].players[match_dictionary[id].team2[2]]}"
+
+    updated_match_embed.add_field(name='Team 1', value=team1, inline=True)
+    updated_match_embed.add_field(name='Team 2', value=team2, inline=True)
+    updated_match_embed.add_field(name='Map', value=match_dictionary[id].map, inline=False)
+    updated_match_embed.set_author(name=f'Match #{id}')
+
+    match_embed = updated_match_embed
+
+
+def createUser(dis_id):
+    user_dictionary[dis_id] = User()
+
+
+def createMatch():
+    global match_counter
+    match_counter += 1
+    match_dictionary[match_counter] = Match()
+
+
+def createRatedMatch():
+    global match_counter
+    match_counter += 1
+    match_dictionary[match_counter] = RatedMatch()
+
+def sortRankings():
+    global rankings
+    global ranking_names
+    global ranking_scores
+    rankings = []
+    ranking_names = []
+    ranking_scores = []
+    i = 0
+    for dis_id in user_dictionary:
+        if user_dictionary[dis_id].wins + user_dictionary[dis_id].losses > 9:
+            dis_name = client.get_guild(SERVER_ID).get_member(dis_id)
+            rankings.append([dis_name, user_dictionary[dis_id].display_rating, i + 1])
+            i += 1
+    rankings = sorted(rankings, key=operator.itemgetter(1), reverse=True)
+    k = 0
+    while k < len(rankings):
+        ranking_names.append(rankings[k][0])
+        k += 1
+    k = 0
+    while k < len(rankings):
+        ranking_scores.append(rankings[k][1])
+        k += 1
+
+
+def closeMatch(id, result):
+    global user_dictionary
+    global match_dictionary
+    global user_pickle_out
+    global match_pickle_out
+    global user_pickle_information
+    global winrate_pickle_info
+
+    sum = 0
+    for player in match_dictionary[id].team1:
+        sum += user_dictionary[player.id].points
+        team1_avg = sum / 3
+
+    sum = 0
+    for player in match_dictionary[id].team2:
+        sum += user_dictionary[player.id].points
+        team2_avg = sum / 3
+
+    if result == 1:   #team 1 wins
+        updated_team1_avg, updated_team2_avg = rate_1vs1(team1_avg, team2_avg)
+        team1_change = (updated_team1_avg - team1_avg) * 2
+        team2_change = (updated_team2_avg - team2_avg) * 2
+        for player in match_dictionary[id].team1:
+            user_dictionary[player.id].wins += 1
+            user_dictionary[player.id].points += team1_change
+
+            if player.id not in winrate_pickle_info:
+                winrate_pickle_info[player.id] = {}
+
+            if match_dictionary[id].team1[0].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[0].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][0] += 1
+
+            if match_dictionary[id].team1[1].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[1].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][0] += 1
+
+            if match_dictionary[id].team1[2].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[2].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][0] += 1
+
+        for player in match_dictionary[id].team2:
+            user_dictionary[player.id].losses += 1
+            user_dictionary[player.id].points += team2_change
+
+            if player.id not in winrate_pickle_info:
+                winrate_pickle_info[player.id] = {}
+
+            if match_dictionary[id].team2[0].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[0].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][1] += 1
+
+            if match_dictionary[id].team2[1].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[1].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][1] += 1
+
+            if match_dictionary[id].team2[2].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[2].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][1] += 1
+
+
+    elif result == 2:   #team 2 wins
+        updated_team2_avg, updated_team1_avg = rate_1vs1(team2_avg, team1_avg)
+        team1_change = (updated_team1_avg - team1_avg) * 2
+        team2_change = (updated_team2_avg - team2_avg) * 2
+        for player in match_dictionary[id].team2:
+            user_dictionary[player.id].wins += 1
+            user_dictionary[player.id].points += team2_change
+
+            if player.id not in winrate_pickle_info:
+                winrate_pickle_info[player.id] = {}
+
+            if match_dictionary[id].team2[0].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[0].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][0] += 1
+
+            if match_dictionary[id].team2[1].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[1].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][0] += 1
+
+            if match_dictionary[id].team2[2].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team2[2].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team2[0].id][0] += 1
+
+        for player in match_dictionary[id].team1:
+            user_dictionary[player.id].losses += 1
+            user_dictionary[player.id].points += team1_change
+
+            if player.id not in winrate_pickle_info:
+                winrate_pickle_info[player.id] = {}
+
+            if match_dictionary[id].team1[0].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[0].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][1] += 1
+
+            if match_dictionary[id].team1[1].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[1].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][1] += 1
+
+            if match_dictionary[id].team1[2].id not in winrate_pickle_info[player.id]:
+                winrate_pickle_info[player.id][match_dictionary[id].team1[2].id] = [0, 0]
+            winrate_pickle_info[player.id][match_dictionary[id].team1[0].id][1] += 1
+
+    for player in match_dictionary[id].players.keys():
+        if (user_dictionary[player.id].wins + user_dictionary[player.id].losses) <= 10:
+            user_dictionary[player.id].points = (user_dictionary[player.id].wins - user_dictionary[player.id].losses) * 20 + 1000
+
+    for player in match_dictionary[id].players.keys():
+        user_dictionary[player.id].in_match = False
+        user_dictionary[player.id].is_captain1 = False
+        user_dictionary[player.id].is_captain2 = False
+        user_dictionary[player.id].reported = False
+        user_dictionary[player.id].dropped = False
+        user_dictionary[player.id].display_rating = round(user_dictionary[player.id].points)
+
+    match_dictionary[id].closed = True
+
+    user_pickle_information = []
+
+    for user in user_dictionary:
+        user_pickle_information.append([user, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses, user_dictionary[user].strikes])
+
+    user_pickle_out = open("user.pickle", "wb")
+    pickle.dump(user_pickle_information, user_pickle_out)
+    user_pickle_out.close()
+
+    match_pickle_out = open("match.pickle", "wb")
+    pickle.dump(match_counter, match_pickle_out)
+    match_pickle_out.close()
+
+    winrate_pickle_out = open("winrate.pickle", "wb")
+    pickle.dump(winrate_pickle_info, winrate_pickle_out)
+    winrate_pickle_out.close()
+
+
+# dont call function if ID not in match_dictionary.keys()
+def matchAnalysis(info):
+    global character_stats
+    global stats_pickle_out
+    global match_dictionary
+    ban_count = 0
+    pick_count = 0
+    ban_list = []
+    pick_list = []
+
+    for i in DRAFT_FORMAT:
+        if i == 'b':
+            ban_count += 1
+        if i == 'p':
+            pick_count += 1
+
+    i = 1
+    while i < ban_count:
+        ban_list.append(info[i])
+        i += 1
+    while i < (ban_count + pick_count):
+        pick_list.append(info[i])
+
+    id = int(info[0])
+
+    for i in ban_list:
+        character_stats[i][0] += 1
+
+    for i in pick_list:
+        character_stats[i][1] += 1
+
+    if match_dictionary[id].team1_win_votes >= REQUIRED_VOTERS:
+        i = 0
+        while i < 3:
+            character_stats[pick_list[i]][2] += 1
+        while i < 6:
+            character_stats[pick_list[i]][3] += 1
+
+    elif match_dictionary[id].team2_win_votes >= REQUIRED_VOTERS:
+        i = 0
+        while i < 3:
+            character_stats[pick_list[i]][3] += 1
+        while i < 6:
+            character_stats[pick_list[i]][2] += 1
+
+    character_stats['stat counter'] += 2
+
+    stats_pickle_out = open("stats.pickle", "wb")
+    pickle.dump(character_stats, stats_pickle_out)
+    stats_pickle_out.close()
+
+
+def matchPickBan(info):
+    global character_stats
+    global stats_pickle_out
+    global match_dictionary
+    ban_count = 0
+    pick_count = 0
+    ban_list = []
+    pick_list = []
+
+    for i in DRAFT_FORMAT:
+        if i == 'b':
+            ban_count += 1
+        if i == 'p':
+            pick_count += 1
+
+    i = 1
+    while i < ban_count:
+        ban_list.append(info[i])
+        i += 1
+    while i < (ban_count + pick_count):
+        pick_list.append(info[i])
+    '''b1 = info[1]
+    b2 = info[2]
+    b3 = info[3]
+    b4 = info[4]
+    p1 = info[5]
+    p2 = info[6]
+    p3 = info[7]
+    p4 = info[8]
+    p5 = info[9]
+    p6 = info[10]'''
+
+    for i in ban_list:
+        character_stats[i][0] += 1
+
+    for i in pick_list:
+        character_stats[i][1] += 1
+
+    character_stats['stat counter'] += 2
+
+    stats_pickle_out = open("stats.pickle", "wb")
+    pickle.dump(character_stats, stats_pickle_out)
+    stats_pickle_out.close()
 
 
 @client.event
 async def on_ready():
-    print('TourneyChan is online.')
+    global user_pickle_information
+    global queue_table_message
+    global queue_table_data
+    global user_dictionary
+    global match_dictionary
+    global match_counter
+    global character_stats
+    global banned_champs
+    global complaint_pickle_info
+    global winrate_pickle_info
+    updateQueueEmbed()
+    channel = client.get_channel(QUEUE_CHANNEL_ID)
+    await channel.purge()
+    queue_table_message = await channel.send(embed=queue_embed)
+    user_pickle_information = []
+
+    try:
+        user_pickle_in = open("user.pickle", "rb")
+        user_pickle_information = pickle.load(user_pickle_in)
+        user_pickle_in.close()
+    except:
+        pass
+
+    i = 0
+    while i < len(user_pickle_information):
+        dis_id = user_pickle_information[i][0]
+        createUser(dis_id)
+        user_dictionary[dis_id].points = user_pickle_information[i][1]
+        user_dictionary[dis_id].wins = user_pickle_information[i][2]
+        user_dictionary[dis_id].losses = user_pickle_information[i][3]
+        user_dictionary[dis_id].display_rating = round(user_dictionary[dis_id].points)
+        user_dictionary[dis_id].strikes = user_pickle_information[i][4]
+        i += 1
+
+    try:
+        match_pickle_in = open("match.pickle", "rb")
+        match_counter = pickle.load(match_pickle_in)
+        match_pickle_in.close()
+    except:
+        pass
+
+    try:
+        stats_pickle_in = open("stats.pickle", "rb")
+        character_stats = pickle.load(stats_pickle_in)
+        stats_pickle_in.close()
+    except:
+        pass
+
+    try:
+        banned_champs_pickle_in = open("banned_champs.pickle", "rb")
+        banned_champs = pickle.load(banned_champs_pickle_in)
+        banned_champs_pickle_in.close()
+    except:
+        pass
+
+    try:
+        complaint_pickle_in = open("complaints.pickle", "rb")
+        complaint_pickle_info = pickle.load(complaint_pickle_in)
+        complaint_pickle_in.close()
+    except:
+        pass
+
+    try:
+        winrate_pickle_in = open("winrate.pickle", "rb")
+        winrate_pickle_info = pickle.load(winrate_pickle_in)
+        winrate_pickle_in.close()
+    except:
+        pass
+
+    print('Battlerite Bot is online.')
 
 
+#register new user
+@client.command()
+async def register(ctx):
+    global user_dictionary
+    global user_pickle_out
+    global user_pickle_information
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    if ctx.author.id in user_dictionary:
+        await channel.send('You are already registered.')
+    else:
+        createUser(ctx.author.id)
+        user_pickle_information = []
+        for user in user_dictionary:
+            user_pickle_information.append([user, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses, user_dictionary[user].strikes])
+        user_pickle_out = open("user.pickle", "wb")
+        pickle.dump(user_pickle_information, user_pickle_out)
+        user_pickle_out.close()
+        await channel.send('You have been successfully registered.')
+
+
+#clear channels after message is sent and processes commands
 @client.event
 async def on_message(ctx):
+    global match_dictionary
     if ctx.author == client.user:
         return
+
+    if ctx.author.id == DRAFT_BOT_ID and ctx.channel.id == MISC_COMMANDS_ID:
+        results = ctx.content.split(",")
+        match_id = int(results[0])
+        await ctx.delete()
+
+        if match_id in match_dictionary.keys():
+            stats_cache.append(results)
+        else:
+            matchPickBan(results)
+
+    def is_not_me(m):
+        return m.author != client.user
+
+    if ctx.channel.id in BOT_CHANNELS:
+        await ctx.channel.purge(check=is_not_me)
 
     await client.process_commands(ctx)
 
 
-@client.command()
-async def match(ctx, arg=None):
-    if ctx.guild is not None:
+@client.command(aliases=['q'])
+async def queue(ctx, action, role=None):
+    global queue_embed
+    global queue_table_message
+    global purge_voters
+    global queue_channel
+    global match_dictionary
+    global match_counter
+    global match_embed
+
+    if not ctx.channel.id == QUEUE_CHANNEL_ID:
         return
-
-    if ctx.author in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are already in a match.")
-        return
-
-    if arg == '3' or arg == '3v3' or arg is None:
-        match_format = '3v3'
-    elif arg == '1' or arg == '1v1':
-        match_format = '1v1'
-    else:
-        channel = await ctx.author.create_dm()
-        await channel.send("You have entered an invalid match format. Use `!match 3` or `!match 1`")
-        return
-
-    message = f"You have created a {match_format} match."
-
-    if match_format == '1v1':
-        best_of = 9
-        map_pool = ["Blackstone Arena - Day", "Dragon Garden - Night", "Meriko Summit - Night", "Mount Araz - Night",
-                "Orman Temple - Night"]
-
-    if match_format == '3v3':
-        best_of = DEFAULT_BEST_OF
-        map_pool = ["Blackstone Arena - Day", "Daharin Battlegrounds - Night", "Dragon Garden - Night",
-                  "Great Market - Night", "Meriko Summit - Night", "Mount Araz - Night", "Orman Temple - Night"]
-
-        message += f"\nThe current match length is best of {best_of}. You may use `!bo 1`, `!bo 3` or `!bo 5` to change it."
-
-    match_id = 0
-    while match_id == 0 or match_id in match_dict:
-        match_id = random.randint(100, 999)
-
-    match_dict[match_id] = MatchState(match_id, match_format, ctx.author, best_of, map_pool)
-
-    active_captains[ctx.author] = match_id
-
-    message += f"\nSend this code to the other captain:\n`!join {match_id}`"
-    channel = await ctx.author.create_dm()
-    await channel.send(message)
-
-
-@client.command(aliases=["bo"])
-async def bestof(ctx, arg=None):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a draft.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    if match_dict[match_id].match_format != '3v3':
-        channel = await ctx.author.create_dm()
-        await channel.send("You can only change the match length for 3v3 matches.")
-        return
-
-    if match_dict[match_id].current_game == 0:
-        if arg == '3':
-            match_dict[match_id].best_of = 3
-            channel = await ctx.author.create_dm()
-            await channel.send("The match has been changed to a best of 3.")
-        elif arg == '5':
-            match_dict[match_id].best_of = 5
-            channel = await ctx.author.create_dm()
-            await channel.send("The match has been changed to a best of 5.")
-        elif arg == '1':
-            match_dict[match_id].best_of = 1
-            channel = await ctx.author.create_dm()
-            await channel.send("The match has been changed to a best of 1.")
-        else:
-            channel = await ctx.author.create_dm()
-            await channel.send("You have not entered a valid match length.")
-
-        match_dict[match_id].wins_needed = (match_dict[match_id].best_of + 1) / 2
-    else:
-        channel = await ctx.author.create_dm()
-        await channel.send("The match has already begun. You will have to exit this match and create a new one to "
-                           "change the match length.")
-
-
-@client.command()
-async def join(ctx, arg):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are already in a match.")
-        return
-
-    match_id = int(arg)
-
-    if match_id in match_dict:
-        if match_dict[match_id].captain2 is None:
-            match_dict[match_id].captain2 = ctx.author
-            active_captains[ctx.author] = match_id
-
-            # initiate draft here
-            match_dict[match_id].current_game = 1
-
-            if match_dict[match_id].first_ban == 1:
-                match_dict[match_id].active_captain = match_dict[match_id].captain1
-                match_dict[match_id].inactive_captain = match_dict[match_id].captain2
-
-            elif match_dict[match_id].first_ban == 2:
-                match_dict[match_id].active_captain = match_dict[match_id].captain2
-                match_dict[match_id].inactive_captain = match_dict[match_id].captain1
-
-            # 1v1 and 3v3 map draft initiation
-            if match_dict[match_id].match_format == '3v3':
-                match_dict[match_id].current_draft = 'map'
-
-                channel = await match_dict[match_id].active_captain.create_dm()
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].active_map_message_2 = await channel.send(
-                    "You will ban first. Ban with:\n`!ban name`")
-
-                channel = await match_dict[match_id].inactive_captain.create_dm()
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].inactive_map_message_2 = await channel.send("Waiting for other captain to ban.")
-
-            elif match_dict[match_id].match_format == '1v1':
-                match_dict[match_id].current_draft = 'champ'
-                match_dict[match_id].champ_drafts.append([[], []])
-
-                channel = await match_dict[match_id].captain1.create_dm()
-                match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                    "Pick 5 characters that you wish to play with: `!pick name`")
-
-                channel = await match_dict[match_id].captain2.create_dm()
-                match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                    "Pick 5 characters that you wish to play with: `!pick name`")
-
-        else:
-            channel = await ctx.author.create_dm()
-            await channel.send("That match already has two captains.")
-    else:
-        channel = await ctx.author.create_dm()
-        await channel.send("You have not entered a valid match code.")
-
-
-@client.command()
-async def exit(ctx):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a match.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    captain1 = match_dict[match_id].captain1
-    captain2 = match_dict[match_id].captain2
-
-    if captain1 == ctx.author:
-        channel = await captain1.create_dm()
-        await channel.send("You have exited the match.")
-        if captain2 is not None:
-            channel = await captain2.create_dm()
-            await channel.send("The other captain has exited the match.")
-
-    if captain2 == ctx.author:
-        channel = await captain2.create_dm()
-        await channel.send("You have exited the match.")
-        channel = await captain1.create_dm()
-        await channel.send("The other captain has exited the match.")
-
-    active_captains.pop(captain1, None)
-    active_captains.pop(captain2, None)
-    match_dict.pop(match_id)
-
-
-@client.command()
-async def ban(ctx, *, arg):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a match.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    # handle all 3v3 scenarios here
-    if match_dict[match_id].match_format == '3v3':
-        # 3v3 map draft
-        if match_dict[match_id].current_draft == 'map':
-            # first game rules
-            if ctx.author != match_dict[match_id].active_captain:
-                channel = await ctx.author.create_dm()
-                await channel.send("It is not currently your turn to ban.")
-                return
-
-            if match_dict[match_id].current_game == 1:
-                banned_map = arg.lower()
-                if banned_map not in MAP_ALIASES:
-                    channel = await ctx.author.create_dm()
-                    await channel.send(f"`{arg}` is not recognized as a valid map name.")
-                    return
-
-                banned_map = MAP_ALIASES[banned_map]
-
-                if banned_map not in match_dict[match_id].map_drafts[-1][0]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("That map is not in the remaining pool.")
-                    return
-
-                # process map ban
-                match_dict[match_id].map_drafts[-1][0].remove(banned_map)
-                match_dict[match_id].map_drafts[-1][1].append(banned_map)
-
-                if len(match_dict[match_id].map_drafts[-1][0]) == 1:
-                    match_dict[match_id].current_draft = 'champ'
-                    match_dict[match_id].champ_stage = 1
-
-                    match_dict[match_id].champ_drafts.append([[['----'], ['----', '----', '----'], ['----', '----', '----']],
-                                                              [['----'], ['----', '----', '----'], ['----', '----', '----']]])
-                    match_dict[match_id].update_champ_embed()
-
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send(f"The chosen map is: `{match_dict[match_id].map_drafts[-1][0][0]}`")
-                    match_dict[match_id].cap1_champ_message = await channel.send(embed=match_dict[match_id].cap1_champ_embed)
-                    match_dict[match_id].cap1_champ_message_2 = await channel.send("The champion draft will now begin. "
-                                                                                   "You will draft your characters in the following order: R > Bx > By > Pr > Pr > B > P. "
-                                                                                   "Reserve a champion with: "
-                                                                                   "`!res name`")
-
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send(f"The chosen map is: `{match_dict[match_id].map_drafts[-1][0][0]}`")
-                    match_dict[match_id].cap2_champ_message = await channel.send(embed=match_dict[match_id].cap2_champ_embed)
-                    match_dict[match_id].cap2_champ_message_2 = await channel.send("The champion draft will now begin. "
-                                                                                   "You will draft your characters in the following order: R > Bx > By > Pr > Pr > B > P. "
-                                                                                   "Reserve a champion with: "
-                                                                                   "`!res name`")
-
-                    channel = await client.get_guild(SERVER_ID).get_channel(DRAFT_CHANNEL_ID)
-                    match_dict[match_id].channel_embed_message = await channel.send(embed=match_dict[match_id].channel_embed)
-
-                    return
-
-                if len(match_dict[match_id].map_drafts[-1][0]) in [2, 5]:
-                    temp_cap = match_dict[match_id].inactive_captain
-                    match_dict[match_id].inactive_captain = match_dict[match_id].active_captain
-                    match_dict[match_id].active_captain = temp_cap
-
-                channel = await match_dict[match_id].active_captain.create_dm()
-                await match_dict[match_id].active_map_message_2.delete()
-                match_dict[match_id].update_map_embed()
-                await match_dict[match_id].active_map_message.delete()
-                match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].active_map_message_2 = await channel.send("It is your turn to ban a map. Ban with:\n`!ban name`")
-
-                channel = await match_dict[match_id].inactive_captain.create_dm()
-                await match_dict[match_id].inactive_map_message.delete()
-                await match_dict[match_id].inactive_map_message_2.delete()
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].inactive_map_message_2 = await channel.send("Waiting for other captain to ban.")
-
-            elif match_dict[match_id].current_game > 1 and len(match_dict[match_id].map_drafts[-1][0]) > 5:
-                banned_map = arg.lower()
-                if banned_map not in MAP_ALIASES:
-                    channel = await ctx.author.create_dm()
-                    await channel.send(f"`{arg}` is not recognized as a valid map name.")
-                    return
-
-                banned_map = MAP_ALIASES[banned_map]
-
-                if banned_map not in match_dict[match_id].map_drafts[-1][0]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("That map is not in the remaining pool.")
-                    return
-
-                # process map ban
-                match_dict[match_id].map_drafts[-1][0].remove(banned_map)
-                match_dict[match_id].map_drafts[-1][1].append(banned_map)
-
-                if len(match_dict[match_id].map_drafts[-1][0]) == 6:
-
-                    channel = await match_dict[match_id].active_captain.create_dm()
-                    await match_dict[match_id].active_map_message_2.delete()
-                    match_dict[match_id].update_map_embed()
-                    await match_dict[match_id].active_map_message.delete()
-                    match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                    match_dict[match_id].active_map_message_2 = await channel.send(
-                        "It is your turn to ban a map. Ban with:\n`!ban name`")
-
-                    channel = await match_dict[match_id].inactive_captain.create_dm()
-                    await match_dict[match_id].inactive_map_message.delete()
-                    await match_dict[match_id].inactive_map_message_2.delete()
-                    match_dict[match_id].update_map_embed()
-                    match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                    match_dict[match_id].inactive_map_message_2 = await channel.send(
-                        "Waiting for other captain to ban.")
-
-                elif len(match_dict[match_id].map_drafts[-1][0]) == 5:
-                    temp_cap = match_dict[match_id].inactive_captain
-                    match_dict[match_id].inactive_captain = match_dict[match_id].active_captain
-                    match_dict[match_id].active_captain = temp_cap
-
-                    channel = await match_dict[match_id].active_captain.create_dm()
-                    await match_dict[match_id].active_map_message_2.delete()
-                    match_dict[match_id].update_map_embed()
-                    await match_dict[match_id].active_map_message.delete()
-                    match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                    match_dict[match_id].active_map_message_2 = await channel.send("Pick a map with:\n`!pick name`")
-
-                    channel = await match_dict[match_id].inactive_captain.create_dm()
-                    await match_dict[match_id].inactive_map_message.delete()
-                    await match_dict[match_id].inactive_map_message_2.delete()
-                    match_dict[match_id].update_map_embed()
-                    match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                    match_dict[match_id].inactive_map_message_2 = await channel.send("Waiting for other captain to pick.")
-
-            elif match_dict[match_id].current_game > 1 and len(match_dict[match_id].map_drafts[-1][0]) < 5:
-                channel = await ctx.author.create_dm()
-                await channel.send("You are not currently banning a map.")
-                return
-
-        elif match_dict[match_id].current_draft == 'champ':
-
-            ban_champ = arg.lower()
-
-            if ban_champ not in CHAMP_ALIASES:
-                channel = await ctx.author.create_dm()
-                await channel.send(f"`{arg}` is not recognized as valid champion name.")
-                return
-
-            ban_champ = CHAMP_ALIASES[ban_champ]
-
-            if match_dict[match_id].champ_stage == 2:
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if ban_champ == match_dict[match_id].champ_drafts[-1][1][0][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that is reserved by the other team.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][0][2][0] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][1][2][0] == '----':
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 3
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Ban a champion with:\n`!ban name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Ban a champion with:\n`!ban name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-                elif ctx.author == match_dict[match_id].captain2:
-
-                    if ban_champ == match_dict[match_id].champ_drafts[-1][0][0][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that is reserved by the other team.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][1][2][0] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][0][2][0] == '----':
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 3
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Ban a champion with:\n`!ban name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Ban a champion with:\n`!ban name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-            elif match_dict[match_id].champ_stage == 3:
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if ban_champ == match_dict[match_id].champ_drafts[-1][1][0][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that is reserved by the other team.")
-                        return
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][0][2][0],
-                                     match_dict[match_id].champ_drafts[-1][0][2][1],
-                                     match_dict[match_id].champ_drafts[-1][0][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You have already banned that champion.")
-                        return
-
-                    if CHAMP_ROLES[ban_champ] == CHAMP_ROLES[match_dict[match_id].champ_drafts[-1][0][2][0]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"Your first two bans cannot be the same role.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][0][2][1] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][1][2][1] == '----':
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 4
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-                elif ctx.author == match_dict[match_id].captain2:
-
-                    if ban_champ == match_dict[match_id].champ_drafts[-1][0][0][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that is reserved by the other team.")
-                        return
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][1][2][0],
-                                     match_dict[match_id].champ_drafts[-1][1][2][1],
-                                     match_dict[match_id].champ_drafts[-1][1][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You have already banned that champion.")
-                        return
-
-                    if CHAMP_ROLES[ban_champ] == CHAMP_ROLES[match_dict[match_id].champ_drafts[-1][1][2][0]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"Your first two bans cannot be the same role.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][1][2][1] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][0][2][1] == '----':
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 4
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-            elif match_dict[match_id].champ_stage == 6:
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][0][2][0],
-                                     match_dict[match_id].champ_drafts[-1][0][2][1],
-                                     match_dict[match_id].champ_drafts[-1][0][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You have already banned that champion.")
-                        return
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][1][1][0],
-                                     match_dict[match_id].champ_drafts[-1][1][1][1]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that has been picked by the other team.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][0][2][2] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][1][2][2] == '----':
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 7
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-                if ctx.author == match_dict[match_id].captain2:
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][1][2][0],
-                                     match_dict[match_id].champ_drafts[-1][1][2][1],
-                                     match_dict[match_id].champ_drafts[-1][1][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You have already banned that champion.")
-                        return
-
-                    if ban_champ in [match_dict[match_id].champ_drafts[-1][0][1][0],
-                                     match_dict[match_id].champ_drafts[-1][0][1][1]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that has been picked by the other team.")
-                        return
-
-                    match_dict[match_id].champ_drafts[-1][1][2][2] = ban_champ
-                    match_dict[match_id].update_champ_embed()
-
-                    if match_dict[match_id].champ_drafts[-1][0][2][2] == '----':
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-                        channel = await ctx.author.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            f"Waiting for the other captain to ban.")
-
-                    else:
-                        match_dict[match_id].champ_stage = 7
-
-                        await match_dict[match_id].cap1_champ_message.delete()
-                        await match_dict[match_id].cap1_champ_message_2.delete()
-                        await match_dict[match_id].cap2_champ_message.delete()
-                        await match_dict[match_id].cap2_champ_message_2.delete()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap1_champ_embed)
-                        match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = await channel.send(
-                            embed=match_dict[match_id].cap2_champ_embed)
-                        match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                            "Pick a champion with:\n`!pick name`")
-
-                        await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-    # 1v1 scenarios
-    if match_dict[match_id].match_format == '1v1':
-        # 1v1 map draft
-        if match_dict[match_id].current_draft == 'map':
-            # first game rules
-            if ctx.author != match_dict[match_id].active_captain:
-                return
-
-            if match_dict[match_id].current_game == 1:
-                banned_map = arg.lower()
-                if banned_map not in MAP_ALIASES:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("You have entered an invalid map name.")
-                    return
-
-                banned_map = MAP_ALIASES[banned_map]
-
-                if banned_map not in match_dict[match_id].map_drafts[-1][0]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("That map is not in the remaining pool.")
-                    return
-
-                # process map ban
-                match_dict[match_id].map_drafts[-1][0].remove(banned_map)
-                match_dict[match_id].map_drafts[-1][1].append(banned_map)
-
-                if len(match_dict[match_id].map_drafts[-1][0]) == 1:
-                    match_dict[match_id].current_draft = 'champ'
-                    match_dict[match_id].champ_stage = 1
-
-                    match_dict[match_id].update_1v1_embed()
-
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send(embed=match_dict[match_id].cap1_1v1_embed)
-                    await channel.send(f"The chosen map is: `{match_dict[match_id].map_drafts[-1][0][0]}`")
-                    await channel.send(f"Choose your champion for the first game with: `!pick name`")
-
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send(embed=match_dict[match_id].cap2_1v1_embed)
-                    await channel.send(f"The chosen map is: `{match_dict[match_id].map_drafts[-1][0][0]}`")
-                    await channel.send(f"Choose your champion for the first game with: `!pick name`")
-
-                    return
-
-                if len(match_dict[match_id].map_drafts[-1][0]) in [2, 4]:
-                    temp_cap = match_dict[match_id].inactive_captain
-                    match_dict[match_id].inactive_captain = match_dict[match_id].active_captain
-                    match_dict[match_id].active_captain = temp_cap
-
-                channel = await match_dict[match_id].active_captain.create_dm()
-                await match_dict[match_id].active_map_message_2.delete()
-                match_dict[match_id].update_map_embed()
-                await match_dict[match_id].active_map_message.delete()
-                match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].active_map_message_2 = await channel.send(
-                    "It is your turn to ban a map. Ban with:\n`!ban name`")
-
-                channel = await match_dict[match_id].inactive_captain.create_dm()
-                await match_dict[match_id].inactive_map_message.delete()
-                await match_dict[match_id].inactive_map_message_2.delete()
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].inactive_map_message_2 = await channel.send(
-                    "Waiting for other captain to ban.")
-
-        elif match_dict[match_id].current_draft == 'champ':
-            if len(match_dict[match_id].champ_drafts[-1][0]) + len(match_dict[match_id].champ_drafts[-1][1]) == 10:
-
-                ban_champ = arg.lower()
-
-                if ban_champ not in CHAMP_ALIASES:
-                    channel = await ctx.author.create_dm()
-                    await channel.send(f"`{arg}` is not recognized as valid champion name.")
-                    return
-
-                ban_champ = CHAMP_ALIASES[ban_champ]
-
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if ban_champ not in match_dict[match_id].champ_drafts[-1][1]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that the other player did not choose.")
-                        return
-
-                    match_dict[match_id].bans_1v1[0] = ban_champ
-
-                    if match_dict[match_id].bans_1v1[1] is None:
-                        try:
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                        except:
-                            pass
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"Waiting for other player to ban.")
-                        return
-
-                    else:
-                        try:
-                            await match_dict[match_id].cap1_champ_message.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap2_champ_message.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                        except:
-                            pass
-
-                        match_dict[match_id].update_1v1_embed()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = channel.send(
-                            embed=match_dict[match_id].cap1_1v1_embed)
-                        await channel.send(f"Your opponent has banned: `{match_dict[match_id].bans_1v1[1]}`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = channel.send(
-                            embed=match_dict[match_id].cap2_1v1_embed)
-                        await channel.send(f"Your opponent has banned: `{match_dict[match_id].bans_1v1[0]}`")
-
-                        match_dict[match_id].current_draft = 'map'
-
-                        channel = await match_dict[match_id].active_captain.create_dm()
-                        match_dict[match_id].update_map_embed()
-                        match_dict[match_id].active_map_message = await channel.send(
-                            embed=match_dict[match_id].map_embed)
-                        match_dict[match_id].active_map_message_2 = await channel.send(
-                            "You will ban a map first. Ban with:\n`!ban name`")
-
-                        channel = await match_dict[match_id].inactive_captain.create_dm()
-                        match_dict[match_id].update_map_embed()
-                        match_dict[match_id].inactive_map_message = await channel.send(
-                            embed=match_dict[match_id].map_embed)
-                        match_dict[match_id].inactive_map_message_2 = await channel.send(
-                            "Waiting for other captain to ban map.")
-
-                elif ctx.author == match_dict[match_id].captain2:
-
-                    if ban_champ not in match_dict[match_id].champ_drafts[-1][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot ban a champion that the other player did not choose.")
-                        return
-
-                    match_dict[match_id].bans_1v1[1] = ban_champ
-
-                    if match_dict[match_id].bans_1v1[0] is None:
-                        try:
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                        except:
-                            pass
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"Waiting for other player to ban.")
-                        return
-
-                    else:
-                        try:
-                            await match_dict[match_id].cap1_champ_message.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap2_champ_message.delete()
-                        except:
-                            pass
-
-                        try:
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                        except:
-                            pass
-
-                        match_dict[match_id].update_1v1_embed()
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        match_dict[match_id].cap1_champ_message = channel.send(
-                            embed=match_dict[match_id].cap1_1v1_embed)
-                        await channel.send(f"Your opponent has banned: `{match_dict[match_id].bans_1v1[1]}`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        match_dict[match_id].cap2_champ_message = channel.send(
-                            embed=match_dict[match_id].cap2_1v1_embed)
-                        await channel.send(f"Your opponent has banned: `{match_dict[match_id].bans_1v1[0]}`")
-
-                        match_dict[match_id].current_draft = 'map'
-
-                        channel = await match_dict[match_id].active_captain.create_dm()
-                        match_dict[match_id].update_map_embed()
-                        match_dict[match_id].active_map_message = await channel.send(
-                            embed=match_dict[match_id].map_embed)
-                        match_dict[match_id].active_map_message_2 = await channel.send(
-                            "You will ban a map first. Ban with:\n`!ban name`")
-
-                        channel = await match_dict[match_id].inactive_captain.create_dm()
-                        match_dict[match_id].update_map_embed()
-                        match_dict[match_id].inactive_map_message = await channel.send(
-                            embed=match_dict[match_id].map_embed)
-                        match_dict[match_id].inactive_map_message_2 = await channel.send(
-                            "Waiting for other captain to ban map.")
-
-
-
-@client.command(aliases=['res'])
-async def reserve(ctx, *, arg):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a match.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    if match_dict[match_id].current_draft != "champ":
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a champion draft.")
-        return
-
-    if match_dict[match_id].champ_stage != 1:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently reserving a champion.")
-        return
-
-    reserve_champ = arg.lower()
-
-    if reserve_champ not in CHAMP_ALIASES:
-        channel = await ctx.author.create_dm()
-        await channel.send(f"`{arg}` is not recognized as valid champion name.")
-        return
-
-    reserve_champ = CHAMP_ALIASES[reserve_champ]
-
-    if ctx.author == match_dict[match_id].captain1:
-        match_dict[match_id].champ_drafts[-1][0][0][0] = reserve_champ
-        match_dict[match_id].update_champ_embed()
-
-        if match_dict[match_id].champ_drafts[-1][1][0][0] == '----':
-            try:
-                await match_dict[match_id].cap1_champ_message.delete()
-            except:
-                pass
-            try:
-                await match_dict[match_id].cap1_champ_message_2.delete()
-            except:
-                pass
-
-            channel = await ctx.author.create_dm()
-            match_dict[match_id].cap1_champ_message = await channel.send(embed=match_dict[match_id].cap1_champ_embed)
-            match_dict[match_id].cap1_champ_message_2 = await channel.send(f"Waiting for the other captain to reserve.")
-
-        else:
-            match_dict[match_id].champ_stage = 2
-
-            try:
-                await match_dict[match_id].cap1_champ_message.delete()
-            except:
-                pass
-            try:
-                await match_dict[match_id].cap1_champ_message_2.delete()
-            except:
-                pass
-            try:
-                await match_dict[match_id].cap2_champ_message.delete()
-            except:
-                pass
-            try:
-                await match_dict[match_id].cap2_champ_message_2.delete()
-            except:
-                pass
-
-            channel = await match_dict[match_id].captain1.create_dm()
-            match_dict[match_id].cap1_champ_message = await channel.send(embed=match_dict[match_id].cap1_champ_embed)
-            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                "Ban a champion with:\n`!ban name`")
-
-            channel = await match_dict[match_id].captain2.create_dm()
-            match_dict[match_id].cap2_champ_message = await channel.send(embed=match_dict[match_id].cap2_champ_embed)
-            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                "Ban a champion with:\n`!ban name`")
-
-            await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-    elif ctx.author == match_dict[match_id].captain2:
-        match_dict[match_id].champ_drafts[-1][1][0][0] = reserve_champ
-        match_dict[match_id].update_champ_embed()
-
-        if match_dict[match_id].champ_drafts[-1][0][0][0] == '----':
-            await match_dict[match_id].cap2_champ_message.delete()
-            await match_dict[match_id].cap2_champ_message_2.delete()
-            channel = await ctx.author.create_dm()
-            match_dict[match_id].cap2_champ_message = await channel.send(embed=match_dict[match_id].cap2_champ_embed)
-            match_dict[match_id].cap2_champ_message_2 = await channel.send(f"Waiting for the other captain to reserve.")
-
-        else:
-            match_dict[match_id].champ_stage = 2
-
-            await match_dict[match_id].cap1_champ_message.delete()
-            await match_dict[match_id].cap1_champ_message_2.delete()
-            await match_dict[match_id].cap2_champ_message.delete()
-            await match_dict[match_id].cap2_champ_message_2.delete()
-
-            channel = await match_dict[match_id].captain1.create_dm()
-            match_dict[match_id].cap1_champ_message = await channel.send(embed=match_dict[match_id].cap1_champ_embed)
-            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                "Ban a champion with:\n`!ban name`")
-
-            channel = await match_dict[match_id].captain2.create_dm()
-            match_dict[match_id].cap2_champ_message = await channel.send(embed=match_dict[match_id].cap2_champ_embed)
-            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                "Ban a champion with:\n`!ban name`")
-
-            await match_dict[match_id].channel_embed_message.edit(embed=match_dict[match_id].channel_embed)
-
-
-@client.command()
-async def pick(ctx, *, arg):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a match.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    if match_dict[match_id].match_format == '3v3':
-        if match_dict[match_id].current_draft == 'map':
-            if len(match_dict[match_id].map_drafts[-1][0]) == 5:
-
-                pick_map = arg.lower()
-                if pick_map not in MAP_ALIASES:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("You have entered an invalid map name.")
-                    return
-
-                pick_map = MAP_ALIASES[pick_map]
-
-                if pick_map not in match_dict[match_id].map_drafts[-1][0]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("That map is not in the remaining pool.")
-                    return
-
-                # process map ban
-                match_dict[match_id].current_draft = 'champ'
-                match_dict[match_id].champ_stage = 1
-
-                match_dict[match_id].champ_drafts.append(
-                    [[['----'], ['----', '----', '----'], ['----', '----', '----']],
-                     [['----'], ['----', '----', '----'], ['----', '----', '----']]])
-                match_dict[match_id].update_champ_embed()
-
-                channel = await match_dict[match_id].captain1.create_dm()
-                await channel.send(f"The chosen map is: `{pick_map}`")
-                match_dict[match_id].map_drafts[-1][0][0] = pick_map
-                match_dict[match_id].cap1_champ_message = await channel.send(
-                    embed=match_dict[match_id].cap1_champ_embed)
-                match_dict[match_id].cap1_champ_message_2 = await channel.send("The champion draft will now begin. "
-                                                                               "Reserve a champion with:\n"
-                                                                               "`!res name`")
-
-                channel = await match_dict[match_id].captain2.create_dm()
-                await channel.send(f"The chosen map is: `{pick_map}`")
-                match_dict[match_id].map_drafts[-1][0][0] = pick_map
-                match_dict[match_id].cap2_champ_message = await channel.send(
-                    embed=match_dict[match_id].cap2_champ_embed)
-                match_dict[match_id].cap2_champ_message_2 = await channel.send("The champion draft will now begin. "
-                                                                               "Reserve a champion with:\n"
-                                                                               "`!res name`")
-
-        elif match_dict[match_id].current_draft == 'champ':
-            pick_champ = arg.lower()
-
-            if pick_champ not in CHAMP_ALIASES:
-                channel = await ctx.author.create_dm()
-                await channel.send(f"`{arg}` is not recognized as valid champion name.")
-                return
-
-            pick_champ = CHAMP_ALIASES[pick_champ]
-
-            if match_dict[match_id].champ_stage not in [4, 5, 7]:
-                channel = await ctx.author.create_dm()
-                await channel.send(f"It is not currently time to pick a champion.")
-                return
-
-            if match_dict[match_id].champ_stage in [4, 5, 7]:
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if pick_champ in [match_dict[match_id].champ_drafts[-1][1][2][0],
-                                      match_dict[match_id].champ_drafts[-1][1][2][1],
-                                      match_dict[match_id].champ_drafts[-1][1][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that is banned by the other team.")
-                        return
-
-                    if pick_champ in [match_dict[match_id].champ_drafts[-1][0][1][0],
-                                      match_dict[match_id].champ_drafts[-1][0][1][1],
-                                      match_dict[match_id].champ_drafts[-1][0][1][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that you have already picked.")
-                        return
-
-                    if match_dict[match_id].champ_stage == 4:
-                        match_dict[match_id].champ_drafts[-1][0][1][0] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][1][1][0] == '----':
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 5
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                "Pick a champion with:\n`!pick name`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                "Pick a champion with:\n`!pick name`")
-
-                            await match_dict[match_id].channel_embed_message.edit(
-                                embed=match_dict[match_id].channel_embed)
-
-                    elif match_dict[match_id].champ_stage == 5:
-                        match_dict[match_id].champ_drafts[-1][0][1][1] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][1][1][1] == '----':
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 6
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                "Ban a champion with:\n`!ban name`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                "Ban a champion with:\n`!ban name`")
-
-                            await match_dict[match_id].channel_embed_message.edit(
-                                embed=match_dict[match_id].channel_embed)
-
-                    elif match_dict[match_id].champ_stage == 7:
-                        match_dict[match_id].champ_drafts[-1][0][1][2] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][1][1][2] == '----':
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 0
-                            match_dict[match_id].current_draft = 'report'
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"The champion draft has completed. You are playing on: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                f"Report whether you win or lose with: `!r w/l`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"The champion draft has completed. You are playing on: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                f"Report whether you win or lose with: `!r w/l`")
-
-                            await match_dict[match_id].channel_embed_message.edit(
-                                embed=match_dict[match_id].channel_embed)
-
-                if ctx.author == match_dict[match_id].captain2:
-
-                    if pick_champ in [match_dict[match_id].champ_drafts[-1][0][2][0],
-                                      match_dict[match_id].champ_drafts[-1][0][2][1],
-                                      match_dict[match_id].champ_drafts[-1][0][2][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that is banned by the other team.")
-                        return
-
-                    if pick_champ in [match_dict[match_id].champ_drafts[-1][1][1][0],
-                                      match_dict[match_id].champ_drafts[-1][1][1][1],
-                                      match_dict[match_id].champ_drafts[-1][1][1][2]]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that you have already picked.")
-                        return
-
-                    if match_dict[match_id].champ_stage == 4:
-                        match_dict[match_id].champ_drafts[-1][1][1][0] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][0][1][0] == '----':
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 5
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                "Pick a champion with:\n`!pick name`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                "Pick a champion with:\n`!pick name`")
-
-                    elif match_dict[match_id].champ_stage == 5:
-                        match_dict[match_id].champ_drafts[-1][1][1][1] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][0][1][1] == '----':
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 6
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                "Ban a champion with:\n`!ban name`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                "Ban a champion with:\n`!ban name`")
-
-                    elif match_dict[match_id].champ_stage == 7:
-                        match_dict[match_id].champ_drafts[-1][1][1][2] = pick_champ
-                        match_dict[match_id].update_champ_embed()
-
-                        if match_dict[match_id].champ_drafts[-1][0][1][2] == '----':
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"Waiting for the other captain to pick.")
-
-                        else:
-                            match_dict[match_id].champ_stage = 0
-                            match_dict[match_id].current_draft = 'report'
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-                            await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            channel = await match_dict[match_id].captain1.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_champ_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"The champion draft has completed. You are playing on: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                f"Report whether you win or lose with: `!r w/l`")
-
-                            channel = await match_dict[match_id].captain2.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_champ_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"The champion draft has completed. You are playing on: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                f"Report whether you win or lose with: `!r w/l`")
-
-    if match_dict[match_id].match_format == '1v1':
-        # 1v1 champ draft
-        if match_dict[match_id].current_draft == 'champ' and match_dict[match_id].current_game == 1:
-
-            pick_champ = arg.lower()
-
-            if pick_champ not in CHAMP_ALIASES:
-                channel = await ctx.author.create_dm()
-                await channel.send(f"`{arg}` is not recognized as valid champion name.")
-                return
-
-            pick_champ = CHAMP_ALIASES[pick_champ]
-
-            if match_dict[match_id].champ_stage == 0:
-
-                if pick_champ in BANNED_1v1:
-                    channel = await ctx.author.create_dm()
-                    await channel.send(f"That character is banned in 1v1 matches.")
-                    return
-
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if pick_champ in match_dict[match_id].champ_drafts[-1][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that you have already chosen.")
-                        return
-
-                    if len(match_dict[match_id].champ_drafts[-1][0]) < 5:
-
-                        match_dict[match_id].champ_drafts[-1][0].append(pick_champ)
-
-                        if len(match_dict[match_id].champ_drafts[-1][0]) < 5:
-                            if match_dict[match_id].cap1_champ_message is not None:
-                                await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-
-                            match_dict[match_id].update_1v1_embed()
-
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap1_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap1_1v1_embed)
-                            match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                f"Pick {5 - len(match_dict[match_id].champ_drafts[-1][0])} more champions with: `!pick name`")
-
-                        elif len(match_dict[match_id].champ_drafts[-1][0]) == 5:
-
-                            await match_dict[match_id].cap1_champ_message.delete()
-                            await match_dict[match_id].cap1_champ_message_2.delete()
-
-                            channel = await ctx.author.create_dm()
-
-                            if len(match_dict[match_id].champ_drafts[-1][1]) < 5:
-
-                                match_dict[match_id].update_1v1_embed()
-
-                                match_dict[match_id].cap1_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap1_1v1_embed)
-                                match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                    "Waiting for other player to finish picking.")
-
-                            elif len(match_dict[match_id].champ_drafts[-1][1]) == 5:
-                                match_dict[match_id].show_both_1v1 = True
-                                match_dict[match_id].update_1v1_embed()
-
-                                channel = await match_dict[match_id].captain1.create_dm()
-                                match_dict[match_id].cap1_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap1_1v1_embed)
-                                match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                    "Champion selection has finished. Ban one of your opponent's champions for game 1 with: `!ban name`")
-
-                                await match_dict[match_id].cap2_champ_message.delete()
-                                await match_dict[match_id].cap2_champ_message_2.delete()
-
-                                channel = await match_dict[match_id].captain2.create_dm()
-                                match_dict[match_id].cap2_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap2_1v1_embed)
-                                match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                    "Champion selection has finished. Ban one of your opponent's champions for game 1 with: `!ban name`")
-
-                if ctx.author == match_dict[match_id].captain2:
-
-                    if pick_champ in match_dict[match_id].champ_drafts[-1][1]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send(f"You cannot pick a champion that you have already chosen.")
-                        return
-
-                    if len(match_dict[match_id].champ_drafts[-1][1]) < 5:
-
-                        match_dict[match_id].champ_drafts[-1][1].append(pick_champ)
-
-                        if len(match_dict[match_id].champ_drafts[-1][1]) < 5:
-                            if match_dict[match_id].cap2_champ_message is not None:
-                                await match_dict[match_id].cap2_champ_message.delete()
-                            await match_dict[match_id].cap2_champ_message_2.delete()
-
-                            match_dict[match_id].update_1v1_embed()
-
-                            channel = await ctx.author.create_dm()
-                            match_dict[match_id].cap2_champ_message = await channel.send(
-                                embed=match_dict[match_id].cap2_1v1_embed)
-                            match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                f"Pick {5 - len(match_dict[match_id].champ_drafts[-1][1])} more champions with: `!pick name`")
-
-                        elif len(match_dict[match_id].champ_drafts[-1][1]) == 5:
-
-                            try:
-                                await match_dict[match_id].cap2_champ_message.delete()
-                            except:
-                                pass
-                            try:
-                                await match_dict[match_id].cap2_champ_message_2.delete()
-                            except:
-                                pass
-
-                            channel = await ctx.author.create_dm()
-
-                            if len(match_dict[match_id].champ_drafts[-1][0]) < 5:
-
-                                match_dict[match_id].update_1v1_embed()
-
-                                match_dict[match_id].cap2_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap2_1v1_embed)
-                                match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                    "Waiting for other player to finish picking.")
-
-                            elif len(match_dict[match_id].champ_drafts[-1][0]) == 5:
-                                match_dict[match_id].show_both_1v1 = True
-                                match_dict[match_id].update_1v1_embed()
-
-                                await match_dict[match_id].cap1_champ_message.delete()
-                                await match_dict[match_id].cap1_champ_message_2.delete()
-
-                                channel = await match_dict[match_id].captain1.create_dm()
-                                match_dict[match_id].cap1_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap1_1v1_embed)
-                                match_dict[match_id].cap1_champ_message_2 = await channel.send(
-                                    "Champion selection has finished. Ban one of your opponent's champions for game 1 with: `!ban name`")
-
-                                channel = await match_dict[match_id].captain2.create_dm()
-                                match_dict[match_id].cap2_champ_message = await channel.send(
-                                    embed=match_dict[match_id].cap2_1v1_embed)
-                                match_dict[match_id].cap2_champ_message_2 = await channel.send(
-                                    "Champion selection has finished. Ban one of your opponent's champions for game 1 with: `!ban name`")
-
-            elif match_dict[match_id].champ_stage == 1:
-                if ctx.author == match_dict[match_id].captain1:
-
-                    if pick_champ not in match_dict[match_id].champ_drafts[-1][0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("You cannot pick a champion that is not in your remaining pool.")
-                        return
-
-                    if pick_champ == match_dict[match_id].bans_1v1[1]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("You cannot pick a champion that is banned by the other player.")
-                        return
-
-                    match_dict[match_id].cap1_1v1_champ = pick_champ
-
-                    if match_dict[match_id].cap2_1v1_champ is None:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("Waiting for the other player to pick a champion.")
-                    else:
-                        match_dict[match_id].current_draft = 'report'
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        await channel.send(f"You are playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                           f"`{match_dict[match_id].captain2.name}` is playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                           f"The map is: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                           f"Report the result of your game with: `!report w/l`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        await channel.send(f"You are playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                           f"`{match_dict[match_id].captain1.name}` is playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                           f"The map is: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                           f"Report the result of your game with: `!report w/l`")
-
-                elif ctx.author == match_dict[match_id].captain2:
-
-                    if pick_champ not in match_dict[match_id].champ_drafts[-1][1]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("You cannot pick a champion that is not in your remaining pool.")
-                        return
-
-                    if pick_champ == match_dict[match_id].bans_1v1[0]:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("You cannot pick a champion that is banned by the other player.")
-                        return
-
-                    match_dict[match_id].cap2_1v1_champ = pick_champ
-
-                    if match_dict[match_id].cap1_1v1_champ is None:
-                        channel = await ctx.author.create_dm()
-                        await channel.send("Waiting for the other player to pick a champion.")
-                    else:
-                        match_dict[match_id].current_draft = 'report'
-
-                        channel = await match_dict[match_id].captain1.create_dm()
-                        await channel.send(f"You are playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                           f"`{match_dict[match_id].captain2.name}` is playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                           f"The map is: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                           f"Report the result of your game with: `!report w/l`")
-
-                        channel = await match_dict[match_id].captain2.create_dm()
-                        await channel.send(f"You are playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                           f"`{match_dict[match_id].captain1.name}` is playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                           f"The map is: `{match_dict[match_id].map_drafts[-1][0][0]}`\n"
-                                           f"Report the result of your game with: `!report w/l`")
-
-        elif match_dict[match_id].current_draft == 'champ' and match_dict[match_id].current_game > 1:
-
-            if ctx.author != match_dict[match_id].active_captain:
-                return
-
-            pick_champ = arg.lower()
-
-            if pick_champ not in CHAMP_ALIASES:
-                channel = await ctx.author.create_dm()
-                await channel.send(f"`{arg}` is not recognized as valid champion name.")
-                return
-
-            pick_champ = CHAMP_ALIASES[pick_champ]
-
-            if ctx.author == match_dict[match_id].captain1:
-
-                if pick_champ not in match_dict[match_id].champ_drafts[-1][0]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("You cannot pick a champion that is not in your remaining pool.")
-                    return
-
-                match_dict[match_id].cap1_1v1_champ = pick_champ
-
-                match_dict[match_id].current_draft = 'report'
-
-                channel = await match_dict[match_id].captain1.create_dm()
-                await channel.send(f"You are playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                   f"`{match_dict[match_id].captain2.name}` is playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                   f"Report the result of your game with: `!report w/l`")
-
-                channel = await match_dict[match_id].captain2.create_dm()
-                await channel.send(f"You are playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                   f"`{match_dict[match_id].captain1.name}` is playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                   f"Report the result of your game with: `!report w/l`")
-
-            elif ctx.author == match_dict[match_id].captain2:
-
-                if pick_champ not in match_dict[match_id].champ_drafts[-1][1]:
-                    channel = await ctx.author.create_dm()
-                    await channel.send("You cannot pick a champion that is not in your remaining pool.")
-                    return
-
-                match_dict[match_id].cap2_1v1_champ = pick_champ
-
-                match_dict[match_id].current_draft = 'report'
-
-                channel = await match_dict[match_id].captain1.create_dm()
-                await channel.send(f"You are playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                   f"`{match_dict[match_id].captain2.name}` is playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                   f"Report the result of your game with: `!report w/l`")
-
-                channel = await match_dict[match_id].captain2.create_dm()
-                await channel.send(f"You are playing: `{match_dict[match_id].cap2_1v1_champ}`\n"
-                                   f"`{match_dict[match_id].captain1.name}` is playing: `{match_dict[match_id].cap1_1v1_champ}`\n"
-                                   f"Report the result of your game with: `!report w/l`")
-
-        elif match_dict[match_id].current_draft == 'map' and match_dict[match_id].current_game > 1:
-
-            if ctx.author != match_dict[match_id].active_captain:
-                return
-
-            pick_map = arg.lower()
-            if pick_map not in MAP_ALIASES:
-                channel = await ctx.author.create_dm()
-                await channel.send("You have entered an invalid map name.")
-                return
-
-            pick_map = MAP_ALIASES[pick_map]
-
-            if pick_map not in match_dict[match_id].map_drafts[-1][0]:
-                channel = await ctx.author.create_dm()
-                await channel.send("That map is not in the remaining pool.")
-                return
-
-            match_dict[match_id].current_draft = 'champ'
-            match_dict[match_id].show_both_1v1 = False
-            match_dict[match_id].update_1v1_embed()
-
-            channel = await match_dict[match_id].inactive_captain.create_dm()
-            await channel.send(f"The chosen map is: `{pick_map}`")
-
-            channel = await match_dict[match_id].active_captain.create_dm()
-            await channel.send(f"The chosen map is: `{pick_map}`")
-
-            if ctx.author == match_dict[match_id].captain1:
-                await channel.send(embed=match_dict[match_id].cap1_1v1_embed)
-            elif ctx.author == match_dict[match_id].captain2:
-                await channel.send(embed=match_dict[match_id].cap2_1v1_embed)
-            await channel.send(f"Pick your next champion with: `!pick name`")
-
-            match_dict[match_id].show_both_1v1 = True
-            match_dict[match_id].update_1v1_embed()
-
-
-@client.command(aliases=['r'])
-async def report(ctx, *, arg):
-    if ctx.guild is not None:
-        return
-
-    if ctx.author not in active_captains:
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in a match.")
-        return
-
-    match_id = active_captains[ctx.author]
-
-    if match_dict[match_id].current_draft != "report":
-        channel = await ctx.author.create_dm()
-        await channel.send("You are not currently in the report phase.")
-        return
-
-    if arg.lower() in ['w', 'win']:
-        result = 1
-    elif arg.lower() in ['l', 'loss', 'lose']:
-        result = -1
-    else:
-        channel = await ctx.author.create_dm()
-        await channel.send(f"`{arg}` not accepted as a valid result.")
-        return
-
-    if match_dict[match_id].match_format == '3v3' or '1v1':
-
-        if ctx.author == match_dict[match_id].captain1:
-            match_dict[match_id].last_game_result[0] = result
-        elif ctx.author == match_dict[match_id].captain2:
-            match_dict[match_id].last_game_result[1] = result
-
-        if (match_dict[match_id].last_game_result[0] + match_dict[match_id].last_game_result[1]) != 0:
-            channel = await ctx.author.create_dm()
-            await channel.send(f"Waiting for both captains to report the same result.")
-            return
-        else:
-            if match_dict[match_id].last_game_result[0] == 1:
-                match_dict[match_id].captain1_wins += 1
-            elif match_dict[match_id].last_game_result[1] == 1:
-                match_dict[match_id].captain2_wins += 1
-
-            if match_dict[match_id].captain1_wins == match_dict[match_id].wins_needed:
-                channel = await match_dict[match_id].captain1.create_dm()
-                await channel.send("The match has concluded. Your team has won.")
-                channel = await match_dict[match_id].captain2.create_dm()
-                await channel.send("The match has concluded. Your team has lost.")
-                active_captains.pop(match_dict[match_id].captain1, None)
-                active_captains.pop(match_dict[match_id].captain2, None)
-                match_dict.pop(match_id)
-                return
-
-            elif match_dict[match_id].captain2_wins == match_dict[match_id].wins_needed:
-                channel = await match_dict[match_id].captain1.create_dm()
-                await channel.send("The match has concluded. Your team has lost.")
-                channel = await match_dict[match_id].captain2.create_dm()
-                await channel.send("The match has concluded. Your team has won.")
-                active_captains.pop(match_dict[match_id].captain1, None)
-                active_captains.pop(match_dict[match_id].captain2, None)
-                match_dict.pop(match_id)
-                return
-
-            elif match_dict[match_id].match_format == '3v3':
-                match_dict[match_id].current_draft = 'map'
-                match_dict[match_id].current_game += 1
-                match_dict[match_id].map_drafts.append([["Blackstone Arena - Day", "Daharin Battlegrounds - Night", "Dragon Garden - Night",
-                  "Great Market - Night", "Meriko Summit - Night", "Mount Araz - Night", "Orman Temple - Night"], []])
-
-                if match_dict[match_id].last_game_result[0] == 1:
-                    match_dict[match_id].active_captain = match_dict[match_id].captain1
-                    match_dict[match_id].inactive_captain = match_dict[match_id].captain2
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send("Your team has won the last game. The next map draft will now begin.")
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send("Your team has lost the last game. The next map draft will now begin.")
-                elif match_dict[match_id].last_game_result[1] == 1:
-                    match_dict[match_id].active_captain = match_dict[match_id].captain2
-                    match_dict[match_id].inactive_captain = match_dict[match_id].captain1
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send("Your team has lost the last game. The next map draft will now begin.")
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send("Your team has won the last game. The next map draft will now begin.")
-
-                match_dict[match_id].last_game_result = [9, 9]
-                match_dict[match_id].update_map_embed()
-                channel = await match_dict[match_id].active_captain.create_dm()
-                match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].active_map_message_2 = await channel.send(
-                    "Ban with:\n`!ban name`")
-
-                channel = await match_dict[match_id].inactive_captain.create_dm()
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].inactive_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].inactive_map_message_2 = await channel.send(
-                    "Waiting for other captain to ban.")
-
-            elif match_dict[match_id].match_format == '1v1':
-                match_dict[match_id].current_draft = 'map'
-                match_dict[match_id].current_game += 1
-                match_dict[match_id].map_drafts.append([["Blackstone Arena - Day", "Dragon Garden - Night",
-                                                         "Meriko Summit - Night", "Mount Araz - Night",
-                                                         "Orman Temple - Night"], []])
-
-                if match_dict[match_id].last_game_result[0] == 1:
-                    match_dict[match_id].champ_drafts[-1][1].remove(match_dict[match_id].cap2_1v1_champ)
-
-                    match_dict[match_id].active_captain = match_dict[match_id].captain2
-                    match_dict[match_id].inactive_captain = match_dict[match_id].captain1
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send("You won the last game.")
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send("You lost the last game.")
-
-                elif match_dict[match_id].last_game_result[1] == 1:
-                    match_dict[match_id].champ_drafts[-1][0].remove(match_dict[match_id].cap1_1v1_champ)
-
-                    match_dict[match_id].active_captain = match_dict[match_id].captain1
-                    match_dict[match_id].inactive_captain = match_dict[match_id].captain2
-                    channel = await match_dict[match_id].captain1.create_dm()
-                    await channel.send("You lost the last game.")
-                    channel = await match_dict[match_id].captain2.create_dm()
-                    await channel.send("You won the last game.")
-
-                match_dict[match_id].last_game_result = [9, 9]
-                match_dict[match_id].bans_1v1 = [None, None]
-                match_dict[match_id].update_map_embed()
-                match_dict[match_id].update_1v1_embed()
-                channel = await match_dict[match_id].active_captain.create_dm()
-                match_dict[match_id].active_map_message = await channel.send(embed=match_dict[match_id].map_embed)
-                match_dict[match_id].active_map_message_2 = await channel.send(
-                    "Pick with: `!pick name`")
-
-
-@client.command()
-async def rules(ctx, arg=None):
 
     channel = await ctx.author.create_dm()
-    if arg is None:
-        await channel.send("No argument given.")
+    guild = client.get_guild(SERVER_ID)
+    nail_member = guild.get_role(NAIL_MEMBER_ID)
+    nail_trial = guild.get_role(NAIL_TRIAL_ID)
+
+    if (ctx.author.id in user_dictionary.keys()) and ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)) and (ctx.author.id not in banned_players):
+        if action == 'join' or action == 'j':
+            if not ctx.author in (item[0] for item in queue_channel):   #checks if author is in a list of the first element of queue_channel
+                if not user_dictionary[ctx.author.id].in_match:
+                    if role == 'f' or role == 's' or role == 'd' or role == 'fill' or role == 'dps' or role == 'support':
+                        if role == 'f' or role == 'fill':
+                            queue_channel.append([ctx.author, 'Fill'])
+                        if role == 's' or role == 'support':
+                            queue_channel.append([ctx.author, 'Support'])
+                        if role == 'd' or role == 'dps':
+                            queue_channel.append([ctx.author, 'DPS'])
+                        updateQueueTableData()
+                        updateQueueEmbed()
+                        await queue_table_message.edit(embed=queue_embed)
+                        role_list = [item[1] for item in queue_channel]
+                        if (len(queue_channel) >= 6) and ((role_list.count('Fill') + role_list.count('DPS')) >= 4):
+                            createMatch()
+                            updateQueueTableData()
+                            updateQueueEmbed()
+                            await queue_table_message.edit(embed=queue_embed)
+
+                            """channel = client.get_channel(MATCH_CHANNEL_ID)
+                            await channel.send(f"A new match has been created.\n {match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].mention} "
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].mention} "
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].mention} "
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].mention} "
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].mention} "
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].mention}"
+                                               f"\n")
+                            createMatchEmbed(user_dictionary[ctx.author.id].last_match_id)
+                            await channel.send(embed=match_embed)
+                            await channel.send("Please report the match with `!mr <w/l>`")
+                            channel = await match_dictionary[
+                                user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                            await channel.send(embed=match_embed)
+                            channel = await match_dictionary[
+                                user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                            await channel.send(embed=match_embed)
+                            channel = client.get_channel(DRAFT_CHANNEL_ID)
+                            if len(banned_champs) == 3:
+                                await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
+                            else:
+                                await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
+
+                            channel = client.get_channel(BET_CHANNEL_ID)
+
+                            team1avg = (user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].id].points) / 3
+
+                            team2avg = (user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].id].points +
+                                        user_dictionary[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].id].points) / 3
+
+
+                            await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{team1avg},{team2avg},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].id},"
+                                               f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].id}"
+                                               )
+                            """
+                            if match_dictionary[match_counter].first_pick == 1:
+                                channel = await match_dictionary[match_counter].captain1.create_dm()
+                                await channel.send(f"You are Captain 1. You will draft first. {match_dictionary[match_counter].captain2} is the second captain. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                                                   f"```1 - {match_dictionary[match_counter].draft_pool[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[0]]}\n"
+                                                   f"2 - {match_dictionary[match_counter].draft_pool[1].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[1]]}\n"
+                                                   f"3 - {match_dictionary[match_counter].draft_pool[2].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[2]]}\n"
+                                                   f"4 - {match_dictionary[match_counter].draft_pool[3].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[3]]}\n\n"
+                                                   f"Team 1\n"
+                                                   f"{match_dictionary[match_counter].team1[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team1[0]]}\n\n"
+                                                   f"Team 2\n"
+                                                   f"{match_dictionary[match_counter].team2[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team2[0]]}```\n")
+
+                                channel = await match_dictionary[match_counter].captain2.create_dm()
+                                await channel.send(f"You are Captain 2. You will draft second. {match_dictionary[match_counter].captain1} is the first captain.")
+
+                            if match_dictionary[match_counter].first_pick == 2:
+                                channel = await match_dictionary[match_counter].captain1.create_dm()
+                                await channel.send(f"You are Captain 1. You will draft second. {match_dictionary[match_counter].captain2} is the second captain.\n"
+                                                   f"```1 - {match_dictionary[match_counter].draft_pool[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[0]]}\n"
+                                                   f"2 - {match_dictionary[match_counter].draft_pool[1].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[1]]}\n"
+                                                   f"3 - {match_dictionary[match_counter].draft_pool[2].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[2]]}\n"
+                                                   f"4 - {match_dictionary[match_counter].draft_pool[3].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].draft_pool[3]]}\n\n"
+                                                   f"Team 1\n"
+                                                   f"{match_dictionary[match_counter].team1[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team1[0]]}\n\n"
+                                                   f"Team 2\n"
+                                                   f"{match_dictionary[match_counter].team2[0].name} - {match_dictionary[match_counter].players[match_dictionary[match_counter].team2[0]]}```\n")
+
+                                channel = await match_dictionary[match_counter].captain2.create_dm()
+                                await channel.send(f"You are Captain 2. You will draft first. {match_dictionary[match_counter].captain1} is the first captain. To draft a player, look at the number next to the player's name and type `!draft <#>`")
+
+                            for player in match_dictionary[match_counter].draft_pool:
+                                channel = await player.create_dm()
+                                await channel.send(f"You are not a captain. `{match_dictionary[match_counter].captain1.name}` and `{match_dictionary[match_counter].captain2.name}` are the captains.")
+
+                    else:
+                        await channel.send(f"`{role}` is not recognized as a valid role. Please enter queue with `!queue join <f/d/s/>`")
+                else:
+                    await channel.send("You are still in a match. Report your match in the match channel with `!mr <w/l>`")
+            else:
+                await channel.send("You are already in queue.")
+        elif action == 'leave' or action == 'l':
+            if ctx.author in (item[0] for item in queue_channel):
+                for player in queue_channel:
+                    if player[0] == ctx.author:
+                        queue_channel.remove(player)
+                updateQueueTableData()
+                updateQueueEmbed()
+                await queue_table_message.edit(embed=queue_embed)
+            else:
+                await channel.send("You are not in queue.")
+        elif action == 'purge' or action == 'p':
+            if not ctx.author in purge_voters:
+                nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+                if nail_control in ctx.author.roles:
+                    purge_voters.extend([ctx.author, ctx.author, ctx.author])
+                else:
+                    purge_voters.append(ctx.author)
+                if len(purge_voters) < REQUIRED_VOTERS:
+                    await channel.send(f"You have voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
+                else:
+                    purge_voters.clear()
+                    for player in queue_channel:
+                        channel = await player[0].create_dm()
+                        await channel.send("The queue has been purged.")
+                    queue_channel.clear()
+                    updateQueueTableData()
+                    updateQueueEmbed()
+                    await queue_table_message.edit(embed=queue_embed)
+            else:
+                await channel.send(f"You have already voted to purge the queue. `{REQUIRED_VOTERS-len(purge_voters)}` more people must vote to purge the queue.")
+        else:
+            await channel.send(f"`{action}` is not a recognized command.")
+
+    elif not ((nail_member in ctx.author.roles) or (nail_trial in ctx.author.roles)):
+        await channel.send("You currently do not have a NAIL role. Talk to an administrator to receive the NAIL Trial Member role.")
+
+    elif ctx.author.id in banned_players:
+        await channel.send("You are currently banned from NAIL.")
+
     else:
-        await channel.send(arg)
+        await channel.send("You have not yet registered. Please register using the `!register` command in misc-command channel.")
+
+
+@client.command()
+async def info(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    sortRankings()
+
+    channel = await ctx.author.create_dm()
+
+    info_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+    )
+
+    if ctx.author.id in user_dictionary:
+        info_embed_field_value_1 = f"\nRating:"\
+                                   f"\nRecord:"\
+                                   f"\nRanking:"
+
+        if ctx.author in ranking_names:
+            info_embed_field_value_2 = f"{user_dictionary[ctx.author.id].display_rating}" \
+                f"\n{user_dictionary[ctx.author.id].wins}-{user_dictionary[ctx.author.id].losses}" \
+                f"\n{ranking_names.index(ctx.author) + 1}/{len(ranking_names)}"
+        else:
+            info_embed_field_value_2 = f"{user_dictionary[ctx.author.id].display_rating}" \
+                f"\n{user_dictionary[ctx.author.id].wins}-{user_dictionary[ctx.author.id].losses}" \
+                f"\nComplete {10 - (user_dictionary[ctx.author.id].wins + user_dictionary[ctx.author.id].losses)} more games to place."
+
+        info_embed.add_field(name=f"{ctx.author.name}", value=info_embed_field_value_1, inline=True)
+        info_embed.add_field(name="\u200b", value=info_embed_field_value_2, inline=True)
+
+        await channel.send(embed=info_embed)
+    else:
+        await channel.send("You have not yet registered. Please register using the `!register` command.")
+
+
+
+@client.command()
+async def draft(ctx, arg):
+    global match_embed
+    global user_dictionary
+    global match_dictionary
+    if ctx.guild == None:
+
+        if match_dictionary[user_dictionary[ctx.author.id].last_match_id].first_pick == 1:
+            if user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 4:    #checks if command user is captain 1 and has 4 players in their draft pool
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))   #removes chosen player from draft pool and adds them to team 1
+                await ctx.channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name}`. Waiting for other captain to draft.")
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                await channel.send(
+                    f"It is your turn to draft. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                    f"```1 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0]]}\n"
+                    f"2 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1]]}\n"
+                    f"3 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2]]}\n\n"
+                    f"Team 1\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1]]}\n\n"
+                    f"Team 2\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}```\n"
+                )
+            elif user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 4:
+                await ctx.channel.send("It is not your turn to pick.")
+            elif user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 3:
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))   #removes chosen player from draft pool and adds them to team 1
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                await channel.send(
+                    f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name}`."
+                    f" It is your turn to draft, again. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                    f"```1 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0]]}\n"
+                    f"2 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1]]}\n\n"
+                    f"Team 1\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1]]}\n\n"
+                    f"Team 2\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1]]}```\n"
+                )
+            elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 3:
+                await ctx.channel.send("It is not your turn to pick.")
+            elif user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 2:
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                await channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].name}`.")
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(0))
+                channel = client.get_channel(MATCH_CHANNEL_ID)
+                await channel.send(f"A new match has been created.\n {match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].mention}"
+                                   f"\n")
+                createMatchEmbed(user_dictionary[ctx.author.id].last_match_id)
+                await channel.send(embed=match_embed)
+                await channel.send("Please report the match with `!mr <w/l>`")
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                await channel.send(embed=match_embed)
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                await channel.send(embed=match_embed)
+                channel = client.get_channel(DRAFT_CHANNEL_ID)
+                if len(banned_champs) == 3:
+                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
+                else:
+                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
+                channel = client.get_channel(DRAFT_CHANNEL_ID)
+                await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{DRAFT_FORMAT}")
+            elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 2:
+                await ctx.channel.send("It is not your turn to pick.")
+            else:
+                await ctx.channel.send("You are not a captain or it is not your turn to pick.")
+
+        elif match_dictionary[user_dictionary[ctx.author.id].last_match_id].first_pick == 2:
+            if user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 4:
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))
+                await ctx.channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name}`. Waiting for other captain to draft.")
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                await channel.send(
+                    f"It is your turn to draft. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                    f"```1 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0]]}\n"
+                    f"2 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1]]}\n"
+                    f"3 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[2]]}\n\n"
+                    f"Team 1\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n"
+                    f"Team 2\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}```\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1]]}\n\n"
+                )
+            elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 4:
+                await ctx.channel.send("It is not your turn to pick.")
+            elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 3:
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))   #removes chosen player from draft pool and adds them to team 1
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                await channel.send(
+                    f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name}`."
+                    f" It is your turn to draft, again. To draft a player, look at the number next to the player's name and type `!draft <#>`\n"
+                    f"```1 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[0]]}\n"
+                    f"2 - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool[1]]}\n\n"
+                    f"Team 1\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1]]}\n\n"
+                    f"Team 2\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0]]}\n"
+                    f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].name} - {match_dictionary[user_dictionary[ctx.author.id].last_match_id].players[match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1]]}```\n"
+                )
+            elif user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 3:
+                await ctx.channel.send("It is not your turn to pick.")
+            elif user_dictionary[ctx.author.id].is_captain1 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 2:
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(int(arg) - 1))
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                await channel.send(f"You have chosen `{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].name}`.")
+                match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1.append(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool.pop(0))
+                channel = client.get_channel(MATCH_CHANNEL_ID)
+                await channel.send(f"A new match has been created.\n {match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[0].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[1].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1[2].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[0].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[1].mention} "
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2[2].mention}"
+                                   f"\n")
+                createMatchEmbed(user_dictionary[ctx.author.id].last_match_id)
+                await channel.send(embed=match_embed)
+                await channel.send("Please report the match with `!mr <w/l>`")
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.create_dm()
+                await channel.send(embed=match_embed)
+                channel = await match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.create_dm()
+                await channel.send(embed=match_embed)
+                channel = client.get_channel(DRAFT_CHANNEL_ID)
+                if len(banned_champs) == 3:
+                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{banned_champs[0]},{banned_champs[1]},{banned_champs[2]}")
+                else:
+                    await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                       f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id}")
+                channel = client.get_channel(DRAFT_CHANNEL_ID)
+                await channel.send(f"{user_dictionary[ctx.author.id].last_match_id},{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain1.id},"
+                                   f"{match_dictionary[user_dictionary[ctx.author.id].last_match_id].captain2.id},{DRAFT_FORMAT}")
+
+            elif user_dictionary[ctx.author.id].is_captain2 and len(match_dictionary[user_dictionary[ctx.author.id].last_match_id].draft_pool) == 2:
+                await ctx.channel.send("It is not your turn to pick.")
+            else:
+                await ctx.channel.send("You are not a captain or it is not your turn to pick.")
+
+
+@client.command()
+async def mr(ctx, arg):
+    global user_dictionary
+    global match_dictionary
+    global REQUIRED_VOTERS
+    if not ctx.channel.id == MATCH_CHANNEL_ID:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    if not user_dictionary[ctx.author.id].in_match:
+        await channel.send("You are not currently in a match.")
+    else:
+        if (arg == 'w' or arg == 'win') and ctx.author in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1 and not user_dictionary[ctx.author.id].reported:
+            match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1_win_votes += 1
+            user_dictionary[ctx.author.id].reported = True
+            await channel.send("You have reported a win for team 1.")
+        elif (arg == 'w' or arg == 'win') and ctx.author in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2 and not user_dictionary[ctx.author.id].reported:
+            match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2_win_votes += 1
+            user_dictionary[ctx.author.id].reported = True
+            await channel.send("You have reported a win for team 2.")
+        elif (arg == 'l' or arg == 'loss') and ctx.author in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1 and not user_dictionary[ctx.author.id].reported:
+            match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2_win_votes += 1
+            user_dictionary[ctx.author.id].reported = True
+            await channel.send("You have reported a loss for team 1.")
+        elif (arg == 'l' or arg == 'loss') and ctx.author in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2 and not user_dictionary[ctx.author.id].reported:
+            match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1_win_votes += 1
+            user_dictionary[ctx.author.id].reported = True
+            await channel.send("You have reported a loss for team 2.")
+        elif (arg == 'd' or arg == 'drop') and not user_dictionary[ctx.author.id].dropped:
+            user_dictionary[ctx.author.id].dropped = True
+            match_dictionary[user_dictionary[ctx.author.id].last_match_id].drop_votes += 1
+            await channel.send(f"You have voted to drop the match. `{REQUIRED_VOTERS - match_dictionary[user_dictionary[ctx.author.id].last_match_id].drop_votes}` more people must vote in order to drop the match.")
+        elif (arg == 'd' or arg == 'drop') and user_dictionary[ctx.author.id].dropped:
+            await channel.send(f"You have already voted to drop the match. `{REQUIRED_VOTERS - match_dictionary[user_dictionary[ctx.author.id].last_match_id].drop_votes}` more people must vote in order to drop the match.")
+        else:
+            await channel.send(f"You have already reported or have entered an invalid result. Please report the match with `!mr <w/l>`")
+
+        if match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1_win_votes >= REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author.id].last_match_id].closed:
+            closeMatch(user_dictionary[ctx.author.id].last_match_id, 1)
+            id_list = []
+            if len(stats_cache) > 0:
+                id_list = [int(item[0]) for item in stats_cache]
+            if user_dictionary[ctx.author.id].last_match_id in id_list:
+                matchAnalysis(stats_cache[id_list.index(user_dictionary[ctx.author.id].last_match_id)])
+                del stats_cache[id_list.index(user_dictionary[ctx.author.id].last_match_id)]
+            channel = client.get_channel(MATCH_CHANNEL_ID)
+            await channel.send(f"Match `#{user_dictionary[ctx.author.id].last_match_id}` has ended. Team 1 has won.")
+            for player in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a win. Your new rating is: `{user_dictionary[player.id].display_rating}`")
+            for player in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player.id].display_rating}`")
+        elif match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2_win_votes >= REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author.id].last_match_id].closed:
+            closeMatch(user_dictionary[ctx.author.id].last_match_id, 2)
+            id_list = []
+            if len(stats_cache) > 0:
+                id_list = [int(item[0]) for item in stats_cache]
+            if user_dictionary[ctx.author.id].last_match_id in id_list:
+                matchAnalysis(stats_cache[id_list.index(user_dictionary[ctx.author.id].last_match_id)])
+                del stats_cache[id_list.index(user_dictionary[ctx.author.id].last_match_id)]
+            channel = client.get_channel(MATCH_CHANNEL_ID)
+            await channel.send(f"Match `#{user_dictionary[ctx.author.id].last_match_id}` has ended. Team 2 has won.")
+            for player in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team2:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a win. Your new rating is: `{user_dictionary[player.id].display_rating}`")
+            for player in match_dictionary[user_dictionary[ctx.author.id].last_match_id].team1:
+                channel = await player.create_dm()
+                await channel.send(f"Your last match has been reported as a loss. Your new rating is: `{user_dictionary[player.id].display_rating}`")
+        elif match_dictionary[user_dictionary[ctx.author.id].last_match_id].drop_votes >= REQUIRED_VOTERS and not match_dictionary[user_dictionary[ctx.author.id].last_match_id].closed:
+            for player in match_dictionary[user_dictionary[ctx.author.id].last_match_id].players:
+                channel = await player.create_dm()
+                await channel.send(f"Match `#{user_dictionary[ctx.author.id].last_match_id}` has been dropped.")
+            closeMatch(user_dictionary[ctx.author.id].last_match_id, 3)
+            channel = client.get_channel(MATCH_CHANNEL_ID)
+            await channel.send(f"Match `#{user_dictionary[ctx.author.id].last_match_id}` has been dropped.")
+
+
+@client.command()
+async def help(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    await channel.send(f"```Miscellaneous Commands: *use in misc channel or dm bot*"
+                       f"\n!register - creates a profile for you which contains your stats"
+                       f"\n!info - the bot messages you your rating, W/L, and current standing"
+                       f"\n!draft <#> - used if you are a captain and the bot messages you to draft a player"
+                       f"\n!leaderboard(lb) - bot messages you a top 10 leaderboard"
+                       f"\n!stats - bot messages you a list of all the champs and their respective winrates, pickrates, and banrates"
+                       f"\n!complain <name#1234> <explanation> - submits an anonymous complaint about a player"
+                       f"\n!strikes - displays how many strikes you have"
+                       f"\n\nQueue Channel Commands:"
+                       f"\n!queue(q) join(j) <fill(f)/dps(d)/support(s)> - joins the queue as the desired role"
+                       f"\n!queue(q) leave(l) - leaves the queue"
+                       f"\n!queue(q) purge(p) - requires four people to empty the queue channel!"
+                       f"\n\nMatch Channel Commands"
+                       f"\n!mr <win(w)/loss(l)>  - report your current match as a win or loss"
+                       f"\n!mr drop(d) - requires 4 people in your match to drop the match```")
+
+@client.command(aliases=['lb'])
+async def leaderboard(ctx):
+    global ranking_names
+    global ranking_scores
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    sortRankings()
+    channel = await ctx.author.create_dm()
+
+    lb_embed = discord.Embed(
+        title=None,
+        description=None,
+        color=discord.Color.magenta()
+    )
+
+    if len(rankings) > 9:
+        lb_field_value_1 = f"1)"\
+                         f"\n2)"\
+                         f"\n3)"\
+                         f"\n4)"\
+                         f"\n5)"\
+                         f"\n6)"\
+                         f"\n7)"\
+                         f"\n8)"\
+                         f"\n9)"\
+                         f"\n10)"
+
+        lb_field_value_2 = f"{ranking_names[0].name}"\
+                         f"\n{ranking_names[1].name}"\
+                         f"\n{ranking_names[2].name}"\
+                         f"\n{ranking_names[3].name}"\
+                         f"\n{ranking_names[4].name}"\
+                         f"\n{ranking_names[5].name}"\
+                         f"\n{ranking_names[6].name}"\
+                         f"\n{ranking_names[7].name}"\
+                         f"\n{ranking_names[8].name}"\
+                         f"\n{ranking_names[9].name}"
+
+        lb_field_value_3 = f"{ranking_scores[0]}" \
+                           f"\n{ranking_scores[1]}" \
+                           f"\n{ranking_scores[2]}" \
+                           f"\n{ranking_scores[3]}" \
+                           f"\n{ranking_scores[4]}" \
+                           f"\n{ranking_scores[5]}" \
+                           f"\n{ranking_scores[6]}" \
+                           f"\n{ranking_scores[7]}" \
+                           f"\n{ranking_scores[8]}" \
+                           f"\n{ranking_scores[9]}"
+
+        lb_embed.add_field(name="\u200b", value=lb_field_value_1, inline=True)
+        lb_embed.add_field(name="\u200b", value=lb_field_value_2, inline=True)
+        lb_embed.add_field(name="\u200b", value=lb_field_value_3, inline=True)
+        lb_embed.set_author(name="Leaderboard")
+        await channel.send(embed=lb_embed)
+    else:
+        await channel.send("There are not enough players who have placed to create a leaderboard. Try again later.")
+    if ctx.author in ranking_names:
+        if ranking_names.index(ctx.author) > 9:
+            embed = discord.Embed(
+                title=None,
+                description=None,
+                color=discord.Color.magenta()
+            )
+            embed.add_field(name="\u200b", value=f"{ranking_names.index(ctx.author) + 1})", inline=True)
+            embed.add_field(name="\u200b", value=f"{ctx.author.name}", inline=True)
+            embed.add_field(name="\u200b", value=f"{ranking_scores[ranking_names.index(ctx.author)]}", inline=True)
+            await channel.send(embed=embed)
+
+
+@client.command()
+async def stats(ctx):
+    global character_stats
+
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    for champ in character_stats.keys():
+        if champ != 'stat counter':
+            if character_stats[champ][2] + character_stats[champ][3] > 0:
+                character_stats[champ][4] = character_stats[champ][2] / (character_stats[champ][2] + character_stats[champ][3])
+
+    channel = await ctx.author.create_dm()
+
+    stats_embed = discord.Embed(
+    title=None,
+    description=None,
+    color=discord.Color.magenta()
+    )
+    character_field = "Bakko\nCroak\nFreya\nJamila\nRaigon\nRook\nRuh Kaan\nShifu\nThorn\nAlysia\nAshka\nDestiny\n" \
+                      "Ezmo\nIva\nJade\nJumong\nShen Rao\nTaya\nVaresh\nBlossom\nLucie\nOldur\nPearl\nPestilus\n" \
+                      "Poloma\nSirius\nUlric\nZander"
+
+    win_percent_field = f"{round(character_stats['bakko'][4]*100)}\n"\
+        f"{round(character_stats['croak'][4]*100)}\n"\
+        f"{round(character_stats['freya'][4]*100)}\n"\
+        f"{round(character_stats['jamila'][4]*100)}\n"\
+        f"{round(character_stats['raigon'][4]*100)}\n"\
+        f"{round(character_stats['rook'][4]*100)}\n"\
+        f"{round(character_stats['ruh kaan'][4]*100)}\n"\
+        f"{round(character_stats['shifu'][4]*100)}\n"\
+        f"{round(character_stats['thorn'][4]*100)}\n"\
+        f"{round(character_stats['alysia'][4]*100)}\n"\
+        f"{round(character_stats['ashka'][4]*100)}\n"\
+        f"{round(character_stats['destiny'][4]*100)}\n"\
+        f"{round(character_stats['ezmo'][4]*100)}\n"\
+        f"{round(character_stats['iva'][4]*100)}\n"\
+        f"{round(character_stats['jade'][4]*100)}\n"\
+        f"{round(character_stats['jumong'][4]*100)}\n"\
+        f"{round(character_stats['shen rao'][4]*100)}\n"\
+        f"{round(character_stats['taya'][4]*100)}\n"\
+        f"{round(character_stats['varesh'][4]*100)}\n"\
+        f"{round(character_stats['blossom'][4]*100)}\n"\
+        f"{round(character_stats['lucie'][4]*100)}\n"\
+        f"{round(character_stats['oldur'][4]*100)}\n"\
+        f"{round(character_stats['pearl'][4]*100)}\n"\
+        f"{round(character_stats['pestilus'][4]*100)}\n"\
+        f"{round(character_stats['poloma'][4]*100)}\n"\
+        f"{round(character_stats['sirius'][4]*100)}\n"\
+        f"{round(character_stats['ulric'][4]*100)}\n"\
+        f"{round(character_stats['zander'][4]*100)}\n"
+
+    pick_ban_rate_field = f"{round(100*character_stats['bakko'][1] / character_stats['stat counter'])}/{round(100*character_stats['bakko'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['croak'][1] / character_stats['stat counter'])}/{round(100*character_stats['croak'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['freya'][1] / character_stats['stat counter'])}/{round(100*character_stats['freya'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jamila'][1] / character_stats['stat counter'])}/{round(100*character_stats['jamila'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['raigon'][1] / character_stats['stat counter'])}/{round(100*character_stats['raigon'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['rook'][1] / character_stats['stat counter'])}/{round(100*character_stats['rook'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ruh kaan'][1] / character_stats['stat counter'])}/{round(100*character_stats['ruh kaan'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['shifu'][1] / character_stats['stat counter'])}/{round(100*character_stats['shifu'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['thorn'][1] / character_stats['stat counter'])}/{round(100*character_stats['thorn'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['alysia'][1] / character_stats['stat counter'])}/{round(100*character_stats['alysia'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ashka'][1] / character_stats['stat counter'])}/{round(100*character_stats['ashka'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['destiny'][1] / character_stats['stat counter'])}/{round(100*character_stats['destiny'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ezmo'][1] / character_stats['stat counter'])}/{round(100*character_stats['ezmo'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['iva'][1] / character_stats['stat counter'])}/{round(100*character_stats['iva'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jade'][1] / character_stats['stat counter'])}/{round(100*character_stats['jade'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['jumong'][1] / character_stats['stat counter'])}/{round(100*character_stats['jumong'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['shen rao'][1] / character_stats['stat counter'])}/{round(100*character_stats['shen rao'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['taya'][1] / character_stats['stat counter'])}/{round(100*character_stats['taya'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['varesh'][1] / character_stats['stat counter'])}/{round(100*character_stats['varesh'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['blossom'][1] / character_stats['stat counter'])}/{round(100*character_stats['blossom'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['lucie'][1] / character_stats['stat counter'])}/{round(100*character_stats['lucie'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['oldur'][1] / character_stats['stat counter'])}/{round(100*character_stats['oldur'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['pearl'][1] / character_stats['stat counter'])}/{round(100*character_stats['pearl'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['pestilus'][1] / character_stats['stat counter'])}/{round(100*character_stats['pestilus'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['poloma'][1] / character_stats['stat counter'])}/{round(100*character_stats['poloma'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['sirius'][1] / character_stats['stat counter'])}/{round(100*character_stats['sirius'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['ulric'][1] / character_stats['stat counter'])}/{round(100*character_stats['ulric'][0] / character_stats['stat counter'])}\n"\
+        f"{round(100*character_stats['zander'][1] / character_stats['stat counter'])}/{round(100*character_stats['zander'][0] / character_stats['stat counter'])}\n"
+
+    stats_embed.add_field(name='Champions', value=character_field, inline=True)
+    stats_embed.add_field(name='Winrate %', value=win_percent_field, inline=True)
+    stats_embed.add_field(name='Pick/Ban %', value=pick_ban_rate_field, inline=True)
+    stats_embed.set_author(name='Champion Statistics')
+
+    await channel.send(embed=stats_embed)
+
+@client.command(aliases=['wb'])
+async def weeklyban(ctx, *, champs):
+    global banned_champs
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control in ctx.author.roles:
+        if champs == "None":
+            banned_champs.clear()
+        else:
+            banned_champs = champs.split(",")
+        banned_champs_pickle_out = open("banned_champs.pickle", "wb")
+        pickle.dump(banned_champs, banned_champs_pickle_out)
+        banned_champs_pickle_out.close()
+
+@client.command()
+async def bans(ctx):
+    global banned_champs
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+    if len(banned_champs) == 0:
+        await channel.send("There currently are no champions banned from NAIL.")
+    else:
+        await channel.send(f"The current champions banned from NAIL are: `{banned_champs[0]}`, `{banned_champs[1]}`, and `{banned_champs[2]}`")
+
+@client.command(aliases=['swr'])
+async def showwinrates(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    wr_message = ""
+
+    for player in user_dictionary:
+        if user_dictionary[player].losses > 0:
+            if user_dictionary[player].wins / (user_dictionary[player].losses + user_dictionary[player].wins) < .4:
+                wr_player = client.get_guild(SERVER_ID).get_member(player)
+                wr_message += f"{wr_player.name}  {user_dictionary[player].wins}-{user_dictionary[player].losses}\n"
+    await channel.send(f"```\n{wr_message}```")
+
+@client.command()
+async def ban(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    if int(arg) in banned_players:
+        await channel.send("That player is already banned.")
+    else:
+        banned_players.append(int(arg))
+
+
+@client.command()
+async def unban(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    if int(arg) in banned_players:
+        banned_players.remove(int(arg))
+    else:
+        await channel.send("That player is not banned.")
+
+
+@client.command(aliases=["ss"])
+async def seasonstart(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    channel = await ctx.author.create_dm()
+    for player in user_pickle_information:
+        player[1] = 1000
+        player[2] = 0
+        player[3] = 0
+        user_dictionary[player[0]].points = 1000
+        user_dictionary[player[0]].display_rating = 1000
+        user_dictionary[player[0]].wins = 0
+        user_dictionary[player[0]].losses = 0
+    user_pickle_out = open("user.pickle", "wb")
+    pickle.dump(user_pickle_information, user_pickle_out)
+    user_pickle_out.close()
+    await channel.send("All player stats have been reset.")
+
+
+@client.command()
+async def strike(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    if int(arg) in user_dictionary.keys():
+        user_dictionary[int(arg)].strikes += 1
+        for i in user_pickle_information:
+            if i[0] == int(arg):
+                i[4] == user_dictionary[int(arg)].strikes
+        user_pickle_out = open("user.pickle", "wb")
+        pickle.dump(user_pickle_information, user_pickle_out)
+        user_pickle_out.close()
+
+
+@client.command()
+async def strikes(ctx):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    channel = await ctx.author.create_dm()
+
+    if ctx.author.id in user_dictionary:
+        await channel.send(f"Number of strikes: `{user_dictionary[ctx.author.id].strikes}`")
+    else:
+        await channel.send(f"You are not registered.")
+
+
+@client.command()
+async def complain(ctx, target, *, arg):
+    global complaints
+    global complaint_pickle_info
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    if ctx.author.id not in user_dictionary:
+        channel = await ctx.author.create_dm()
+        await channel.send("You are not registered.")
+        return
+
+    target_player = client.get_guild(SERVER_ID).get_member_named(target)
+    if target_player.id not in user_dictionary:
+        channel = await ctx.author.create_dm()
+        await channel.send(f"`{target}` is not a registered NAIL user. Make sure you have typed their discord name correctly. ex. `!complain Name#1234 explanation`")
+    else:
+        if ctx.author.id not in complaint_pickle_info.keys():
+            complaint_pickle_info[ctx.author.id] = []
+        if target_player.id in complaint_pickle_info[ctx.author.id]:
+            channel = await ctx.author.create_dm()
+            await channel.send(f"You have already filed a complaint about this player. You may only file one complaint for each player.")
+        else:
+            complaint_pickle_info[ctx.author.id].append(target_player.id)
+            complaint_pickle_out = open("complaints.pickle", "wb")
+            pickle.dump(complaint_pickle_info, complaint_pickle_out)
+            complaint_pickle_out.close()
+            channel = await ctx.author.create_dm()
+            await channel.send(f"You have successfully submitted a complaint.")
+            channel = await client.get_user(166670770234195978).create_dm()
+            complaint = await channel.send(f"A new complaint has been filed for `{target_player.name}`:\n```\n{arg}```")
+            complaints[complaint.id] = ctx.author.name
+
+
+@client.command()
+async def uncomplain(ctx, target):
+    global complaint_pickle_info
+    global complaints
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    target_player = client.get_guild(SERVER_ID).get_member_named(target)
+    if ctx.author.id not in complaint_pickle_info.keys():
+        channel = await ctx.author.create_dm()
+        await channel.send("You have not filed any complaints.")
+    elif target_player.id not in complaint_pickle_info[ctx.author.id]:
+        channel = await ctx.author.create_dm()
+        await channel.send(f"You have not filed any complaints for: `{target_player.name}`")
+    else:
+        complaint_pickle_info[ctx.author.id].remove(target_player.id)
+        complaint_pickle_out = open("complaints.pickle", "wb")
+        pickle.dump(complaint_pickle_info, complaint_pickle_out)
+        complaint_pickle_out.close()
+        channel = await ctx.author.create_dm()
+        await channel.send(f"You have revoked a complaint for: `{target_player.name}`")
+        channel = await client.get_user(166670770234195978).create_dm()
+        await channel.send(f"A complaint has been revoked for: `{target_player.name}`")
+
+
+@client.command()
+async def sender(ctx, arg):
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+    if ctx.author.id != 166670770234195978:
+        return
+
+    channel = await ctx.author.create_dm()
+    await channel.send(f"The sender of complaint ID `{arg}` is `{complaints[int(arg)]}`.")
+
+
+@client.command()
+async def resetstrikes(ctx, arg):
+    global user_pickle_information
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    if int(arg) in user_dictionary:
+        user_dictionary[int(arg)].strikes = 0
+        for i in user_pickle_information:
+            if i[0] == int(arg):
+                i[4] = 0
+        user_pickle_out = open("user.pickle", "wb")
+        pickle.dump(user_pickle_information, user_pickle_out)
+        user_pickle_out.close()
+
+
+@client.command()
+async def resetpb(ctx):
+    global character_stats
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    for i in character_stats.keys():
+        if i != 'stat counter':
+            character_stats[i][0] = 0
+            character_stats[i][1] = 0
+        else:
+            character_stats[i] = 0
+
+    stats_pickle_out = open("stats.pickle", "wb")
+    pickle.dump(character_stats, stats_pickle_out)
+    stats_pickle_out.close()
+
+
+@client.command()
+async def complaints(ctx):
+    global complaint_pickle_info
+    if ctx.channel.id != MISC_COMMANDS_ID and ctx.guild != None:
+        return
+
+    complaint_count = 0
+    for player in complaint_pickle_info.keys():
+        if ctx.author.id in complaint_pickle_info[player]:
+            complaint_count += 1
+
+    channel = await ctx.author.create_dm()
+    await channel.send(f"Current # of complaints: `{complaint_count}`")
+
+
+@client.command()
+async def match(ctx, W1, W2, W3, L1, L2, L3):
+    global user_dictionary
+    global user_pickle_information
+
+    if ctx.channel.id != MISC_COMMANDS_ID:
+        return
+
+    nail_control = client.get_guild(SERVER_ID).get_role(NAIL_CONTROL_ID)
+
+    if nail_control not in ctx.author.roles:
+        return
+
+    team1 = [int(W1), int(W2), int(W3)]
+    team2 = [int(L1), int(L2), int(L3)]
+
+    sum = 0
+    for player in team1:
+        sum += user_dictionary[player].points
+        team1_avg = sum / 3
+
+    sum = 0
+    for player in team2:
+        sum += user_dictionary[player].points
+        team2_avg = sum / 3
+
+    updated_team1_avg, updated_team2_avg = rate_1vs1(team1_avg, team2_avg)
+    team1_change = (updated_team1_avg - team1_avg) * 2
+    team2_change = (updated_team2_avg - team2_avg) * 2
+    for player in team1:
+        user_dictionary[player].wins += 1
+        user_dictionary[player].points += team1_change
+    for player in team2:
+        user_dictionary[player].wins += 1
+        user_dictionary[player].points += team2_change
+
+    for player in team1:
+        if (user_dictionary[player].wins + user_dictionary[player].losses) <= 10:
+            user_dictionary[player].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
+        user_dictionary[player].display_rating = round(user_dictionary[player].points)
+
+    for player in team2:
+        if (user_dictionary[player].wins + user_dictionary[player].losses) <= 10:
+            user_dictionary[player].points = (user_dictionary[player].wins - user_dictionary[player].losses) * 20 + 1000
+        user_dictionary[player].display_rating = round(user_dictionary[player].points)
+
+    user_pickle_information = []
+
+    for user in user_dictionary:
+        user_pickle_information.append(
+            [user, user_dictionary[user].points, user_dictionary[user].wins, user_dictionary[user].losses,
+             user_dictionary[user].strikes])
+
+    user_pickle_out = open("user.pickle", "wb")
+    pickle.dump(user_pickle_information, user_pickle_out)
+    user_pickle_out.close()
+
+@client.command(aliases=["wr"])
+async def winrates(ctx):
+    global winrate_pickle_info
+    player_field = ""
+    winrate_field = ""
+
+    if ctx.author.id not in winrate_pickle_info:
+        channel = await ctx.author.create_dm()
+        await channel.send("You do not have any match data recorded with other players.")
+    else:
+        winrate_embed = discord.Embed(
+            title=None,
+            description=None,
+            color=discord.Color.magenta()
+        )
+
+        for i in winrate_pickle_info[ctx.author.id]:
+            if i != ctx.author.id:
+                name = client.get_guild(SERVER_ID).get_member(i).name
+                player_field.append(f"{name}\n")
+                winrate_field.append(f"{round(winrate_pickle_info[ctx.author.id][i][0] / (winrate_pickle_info[ctx.author.id][i][0] + winrate_pickle_info[ctx.author.id][i][1]))}%\n")
+
+        winrate_embed.add_field(name='Players', value=player_field, inline=True)
+        winrate_embed.add_field(name='Winrate %', value=winrate_field, inline=True)
+        winrate_embed.set_author(name='Winrates')
+
+        channel = await ctx.author.create_dm()
+        await channel.send(embed=winrate_embed)
 
 client.run(TOKEN)
